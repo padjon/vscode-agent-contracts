@@ -184,6 +184,13 @@ For MCP config files, the current quick fixes cover:
 
 The trust score is only a prioritization signal. The detailed findings matter more than the number.
 
+## Feedback
+
+If you hit issues or have product wishes, please tell us:
+
+- on GitHub: https://github.com/padjon/vscode-agent-contracts/issues
+- by mail: info@devsheep.de
+
 ## Current scope
 
 This version focuses on analysis and shared policy. It does not intercept agent actions or replace CI and code review.

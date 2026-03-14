@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.1
+
+- Added README feedback links for GitHub issues and product requests by email
+
 ## 1.6.0
 
 - Added editor quick fixes that approve MCP hosts and runner targets directly into the contract
