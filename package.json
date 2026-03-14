@@ -2,7 +2,7 @@
   "name": "agent-contracts",
   "displayName": "Agent Contracts",
   "description": "Workspace trust contracts for MCP and AI-assisted development in VS Code.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "padjon",
   "license": "MIT",
   "repository": {
@@ -18,15 +18,20 @@
   "activationEvents": [
     "onStartupFinished",
     "onCommand:agentContracts.analyzeWorkspace",
+    "onCommand:agentContracts.analyzeChangedFiles",
     "onCommand:agentContracts.initializeContract",
     "onCommand:agentContracts.openReport",
     "onCommand:agentContracts.openGuide",
+    "onCommand:agentContracts.addRecommendedVerification",
+    "onCommand:agentContracts.protectSensitivePaths",
     "onView:agentContracts.findings"
   ],
-  "main": "./out/extension.js",
+  "main": "./out/src/extension.js",
   "scripts": {
-    "compile": "tsc -p ./",
+    "clean": "rm -rf out",
+    "compile": "npm run clean && tsc -p ./",
     "watch": "tsc -w -p ./",
+    "test": "npm run compile && node --test out/test/**/*.test.js",
     "package": "npx @vscode/vsce package",
     "prepublishOnly": "npm run compile"
   },
@@ -41,12 +46,24 @@
         "title": "Agent Contracts: Initialize Contract"
       },
       {
+        "command": "agentContracts.analyzeChangedFiles",
+        "title": "Agent Contracts: Analyze Changed Files"
+      },
+      {
         "command": "agentContracts.openReport",
         "title": "Agent Contracts: Open Report"
       },
       {
         "command": "agentContracts.openGuide",
         "title": "Agent Contracts: How It Works"
+      },
+      {
+        "command": "agentContracts.addRecommendedVerification",
+        "title": "Agent Contracts: Add Recommended Verification"
+      },
+      {
+        "command": "agentContracts.protectSensitivePaths",
+        "title": "Agent Contracts: Protect Sensitive Paths"
       }
     ],
     "configuration": {
@@ -125,6 +142,11 @@
         },
         {
           "command": "agentContracts.openGuide",
+          "when": "view == agentContracts.findings",
+          "group": "navigation"
+        },
+        {
+          "command": "agentContracts.analyzeChangedFiles",
           "when": "view == agentContracts.findings",
           "group": "navigation"
         }

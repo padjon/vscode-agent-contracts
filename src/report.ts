@@ -14,24 +14,26 @@ export function buildMarkdownReport(report: AnalysisReport): string {
 
 - Workspace: ${report.workspaceName}
 - Generated: ${report.generatedAt}
+- Scope: ${report.scope}
 - Trust score: ${report.trustScore}/100
 - Contract: ${report.contractExists ? report.contractPath : `missing (${report.contractPath})`}
 - MCP configs analyzed: ${report.mcpConfigs.length}
 - Sensitive files matched: ${report.sensitiveFiles.length}
+- Changed files considered: ${report.changedFiles.length}
 
 ## Summary
 
 ${report.summary}
 
-## Why this extension exists
+## How the scan works
 
-Developer workflows are moving toward AI-assisted coding, MCP-connected tools, and shared automation inside the editor. What teams still lack is a lightweight, repository-local trust contract that explains:
+The report combines:
 
-- which paths are too sensitive for casual agent edits
-- which verification commands must run before code is trusted
-- which MCP servers are disallowed or higher risk
-
-This extension treats that contract as a first-class artifact inside VS Code.
+- the repo contract
+- verification rules inferred from package scripts
+- sensitive file matches
+- MCP config heuristics
+- optionally, the current Git diff
 
 ## Top findings
 
@@ -48,6 +50,10 @@ ${formatList(report.mcpConfigs)}
 ## Sensitive paths seen
 
 ${formatList(report.sensitiveFiles.slice(0, 20))}
+
+## Changed files
+
+${formatList(report.changedFiles.slice(0, 50))}
 `;
 }
 

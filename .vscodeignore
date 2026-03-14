@@ -1,4 +1,5 @@
 src/**
+test/**
 docs/**
 tsconfig.json
 .github/**
@@ -6,3 +7,4 @@ tsconfig.json
 **/*.map
 .gitignore
 .agent-contract.json
+out/test/**

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.3
+
+- Added analyzer unit tests
+- Added changed-file scan mode backed by Git
+- Added contract autofix commands for verification and protected paths
+- Added editor diagnostics for file-backed findings
+
 ## 0.0.2
 
 - Rewrote the README around workflow and product behavior

@@ -12,10 +12,13 @@ It keeps a small policy file in the repo and uses it to answer practical questio
 
 - creates a repo-local `.agent-contract.json`
 - analyzes MCP config files in the workspace
+- analyzes only changed files when you want a branch-focused review
 - checks whether sensitive files are covered by protected path rules
 - compares your contract with the verification scripts your repo already exposes
+- can add missing verification commands to the contract
+- can add current sensitive files to the contract as protected paths
 - generates a readable report inside VS Code
-- shows top findings in a dedicated Activity Bar view
+- shows findings and shortcuts in a dedicated Activity Bar view
 
 ## How it works
 
@@ -67,6 +70,8 @@ The extension scans workspace MCP configs and flags patterns such as:
 
 There is also a built-in `Agent Contracts: How It Works` command if you want the short product guide inside VS Code.
 
+If you are reviewing an active branch, run `Agent Contracts: Analyze Changed Files` instead of the full workspace scan.
+
 ## Example contract
 
 The extension stores its policy in `.agent-contract.json`.
@@ -105,17 +110,30 @@ Examples of things the extension will report:
 
 - `Agent Contracts: Initialize Contract`
 - `Agent Contracts: Analyze Workspace`
+- `Agent Contracts: Analyze Changed Files`
 - `Agent Contracts: Open Report`
 - `Agent Contracts: How It Works`
+- `Agent Contracts: Add Recommended Verification`
+- `Agent Contracts: Protect Sensitive Paths`
 
 ## View
 
 The Activity Bar view shows:
 
 - current trust score
-- whether the contract exists
+- whether the last scan covered the whole workspace or only changed files
 - a shortcut to the report
+- shortcuts for common contract updates
 - top findings from the latest scan
+
+## Diagnostics and autofixes
+
+Findings tied to files are also surfaced as editor diagnostics.
+
+The first autofix commands currently supported are:
+
+- add inferred verification commands into `requiredVerification`
+- add currently detected sensitive files into `protectedPaths`
 
 The trust score is only a prioritization signal. The detailed findings matter more than the number.
 
@@ -128,6 +146,7 @@ This version focuses on analysis and shared policy. It does not intercept agent 
 ```bash
 npm install
 npm run compile
+npm test
 ```
 
 Press `F5` in VS Code to launch the extension host.

@@ -21,12 +21,14 @@ export interface Finding {
 export interface AnalysisReport {
   workspaceName: string;
   generatedAt: string;
+  scope: "workspace" | "changes";
   contractPath: string;
   contractExists: boolean;
   trustScore: number;
   findings: Finding[];
   mcpConfigs: string[];
   sensitiveFiles: string[];
+  changedFiles: string[];
   recommendedVerification: string[];
   summary: string;
 }
