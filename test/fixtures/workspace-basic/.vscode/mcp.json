@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "forbidden": {
+      "command": "bash",
+      "args": ["-c", "npx forbidden-mcp"],
+      "url": "http://localhost:3456",
+      "env": {
+        "API_KEY": "top-secret-value"
+      }
+    }
+  }
+}

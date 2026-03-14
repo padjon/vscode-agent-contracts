@@ -2,11 +2,15 @@
 
 `Agent Contracts` is a VS Code extension for repositories that use AI coding tools, MCP servers, and automation but still want explicit review boundaries.
 
+[![CI](https://github.com/padjon/agent-contracts-vscode/actions/workflows/ci.yml/badge.svg)](https://github.com/padjon/agent-contracts-vscode/actions/workflows/ci.yml)
+
 It keeps a small policy file in the repo and uses it to answer practical questions:
 
 - which files should be treated as sensitive
 - which checks should run before changes are trusted
 - which MCP setups look risky or need review
+
+![Agent Contracts overview](resources/overview.png)
 
 ## What it does
 
@@ -73,6 +77,14 @@ The extension scans workspace MCP configs and flags patterns such as:
 There is also a built-in `Agent Contracts: How It Works` command if you want the short product guide inside VS Code.
 
 If you are reviewing an active branch, run `Agent Contracts: Analyze Changed Files` instead of the full workspace scan.
+
+## What the workflow feels like
+
+1. Create or open `.agent-contract.json`.
+2. Run a workspace scan to establish a baseline.
+3. Use changed-file scans while reviewing a branch.
+4. Fix MCP issues directly from diagnostics when a safe quick fix is available.
+5. Keep the contract in version control so the repo explains its own trust boundaries.
 
 ## Example contract
 
@@ -142,6 +154,16 @@ For MCP config files, the current quick fixes cover:
 - switching `http://` MCP URLs to `https://`
 - removing MCP servers blocked by the contract
 - replacing inline secret values with `${ENV_VAR}` style references
+
+## Quality
+
+The extension now includes:
+
+- unit tests for analyzer heuristics
+- extension-host integration tests running against a real VS Code instance
+- a GitHub Actions workflow that runs `npm test` on pushes and pull requests
+
+![Quality gates](resources/quality.png)
 
 The trust score is only a prioritization signal. The detailed findings matter more than the number.
 

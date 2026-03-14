@@ -2,8 +2,21 @@
   "name": "agent-contracts",
   "displayName": "Agent Contracts",
   "description": "Workspace trust contracts for MCP and AI-assisted development in VS Code.",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "padjon",
+  "icon": "resources/icon.png",
+  "keywords": [
+    "mcp",
+    "ai",
+    "security",
+    "verification",
+    "policy",
+    "trust"
+  ],
+  "galleryBanner": {
+    "color": "#f4efe6",
+    "theme": "light"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -31,7 +44,9 @@
     "clean": "rm -rf out",
     "compile": "npm run clean && tsc -p ./",
     "watch": "tsc -w -p ./",
-    "test": "npm run compile && node --test out/test/**/*.test.js",
+    "test:unit": "npm run compile && node --test out/test/analyzer.test.js",
+    "test:integration": "npm run compile && node ./out/test/run-integration.js",
+    "test": "npm run test:unit && npm run test:integration",
     "package": "npx @vscode/vsce package",
     "prepublishOnly": "npm run compile"
   },
@@ -157,6 +172,7 @@
     "@types/minimatch": "^5.1.2",
     "@types/node": "^25.5.0",
     "@types/vscode": "^1.109.0",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.7.1",
     "typescript": "^5.9.3"
   }

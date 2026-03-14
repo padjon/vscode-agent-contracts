@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.5
+
+- Added extension-host integration tests with a fixture workspace
+- Added GitHub Actions CI for unit and integration tests
+- Added marketplace-facing visual assets and listing metadata
+- Improved README presentation and quality documentation
+
 ## 0.0.4
 
 - Added line-precise MCP diagnostics

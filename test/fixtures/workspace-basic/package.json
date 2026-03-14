@@ -1,0 +1,9 @@
+{
+  "name": "fixture-workspace",
+  "private": true,
+  "scripts": {
+    "lint": "echo lint",
+    "test": "echo test",
+    "build": "echo build"
+  }
+}
