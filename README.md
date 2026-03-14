@@ -2,7 +2,7 @@
 
 `Agent Contracts` is a VS Code extension for repositories that use AI coding tools, MCP servers, and automation but still want explicit review boundaries.
 
-[![CI](https://github.com/padjon/agent-contracts-vscode/actions/workflows/ci.yml/badge.svg)](https://github.com/padjon/agent-contracts-vscode/actions/workflows/ci.yml)
+[![CI](https://github.com/padjon/vscode-agent-contracts/actions/workflows/ci.yml/badge.svg)](https://github.com/padjon/vscode-agent-contracts/actions/workflows/ci.yml)
 
 It keeps a small policy file in the repo and uses it to answer practical questions:
 

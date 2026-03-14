@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.11
+
+- Moved the canonical repository to `padjon/vscode-agent-contracts`
+- Updated repository metadata and CI badge links to the new prefixed repo
+
 ## 0.0.10
 
 - Added GitHub funding configuration for the repository sponsor button
