@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.1
+
+- Added marketplace and sponsor badges to the README header
+
 ## 1.5.0
 
 - Added inline diagnostics for changed MCP server blocks during branch-focused scans

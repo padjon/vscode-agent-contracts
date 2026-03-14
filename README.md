@@ -1,5 +1,8 @@
 # Agent Contracts
 
+[![Install on Marketplace](https://img.shields.io/badge/Marketplace-Agent%20Contracts-0078D4?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=padjon.agent-contracts)
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/padjon)
+
 `Agent Contracts` is a VS Code extension for repositories that use AI coding tools, MCP servers, and automation but still want explicit review boundaries.
 
 It keeps a small policy file in the repo and uses it to answer practical questions:
