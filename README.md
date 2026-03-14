@@ -78,6 +78,8 @@ There is also a built-in `Agent Contracts: How It Works` command if you want the
 
 If you are reviewing an active branch, run `Agent Contracts: Analyze Changed Files` instead of the full workspace scan.
 
+If you want a faster setup, run `Agent Contracts: Apply Contract Preset` and start from the built-in Node, Python, or Terraform policy.
+
 ## What the workflow feels like
 
 1. Create or open `.agent-contract.json`.
@@ -110,6 +112,12 @@ The extension stores its policy in `.agent-contract.json`.
 }
 ```
 
+Starter templates are also included in the repository:
+
+- [examples/node.agent-contract.json](/home/psadmin/dev/vscode-extension-unnamed/examples/node.agent-contract.json)
+- [examples/python.agent-contract.json](/home/psadmin/dev/vscode-extension-unnamed/examples/python.agent-contract.json)
+- [examples/terraform.agent-contract.json](/home/psadmin/dev/vscode-extension-unnamed/examples/terraform.agent-contract.json)
+
 ## Example findings
 
 Examples of things the extension will report:
@@ -129,6 +137,7 @@ Examples of things the extension will report:
 - `Agent Contracts: How It Works`
 - `Agent Contracts: Add Recommended Verification`
 - `Agent Contracts: Protect Sensitive Paths`
+- `Agent Contracts: Apply Contract Preset`
 
 ## View
 
@@ -148,6 +157,7 @@ The first autofix commands currently supported are:
 
 - add inferred verification commands into `requiredVerification`
 - add currently detected sensitive files into `protectedPaths`
+- merge starter policies for Node, Python, and Terraform repos
 
 For MCP config files, the current quick fixes cover:
 

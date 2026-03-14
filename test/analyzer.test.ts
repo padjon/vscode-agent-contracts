@@ -53,16 +53,19 @@ test("analyzeMcpConfigDocument flags blocked servers, shell wrappers, http, and 
 
 test("collectVerificationFindings flags missing recommended verification", () => {
   const findings: Finding[] = [];
-  collectVerificationFindings(findings, contract, ["npm run test", "npm run lint"]);
+  collectVerificationFindings(findings, contract, ["npm run test", "npm run lint"], ".agent-contract.json");
   assert.equal(findings.length, 1);
   assert.equal(findings[0].id, "missing-recommended-verification");
+  assert.equal(findings[0].location, ".agent-contract.json");
+  assert.equal(findings[0].fix?.kind, "append-unique");
 });
 
 test("collectSensitiveCoverageFindings flags uncovered sensitive files", () => {
   const findings: Finding[] = [];
-  collectSensitiveCoverageFindings(findings, contract, [".env", "secrets.prod.json"]);
+  collectSensitiveCoverageFindings(findings, contract, [".env", "secrets.prod.json"], ".agent-contract.json");
   assert.equal(findings.length, 1);
   assert.equal(findings[0].id, "uncovered-sensitive-files");
+  assert.deepEqual(findings[0].fix?.value, ["secrets.prod.json"]);
 });
 
 test("calculateTrustScore applies severity weights", () => {

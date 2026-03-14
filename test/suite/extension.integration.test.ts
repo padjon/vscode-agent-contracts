@@ -37,13 +37,17 @@ export async function run(): Promise<void> {
     assert.ok(diagnostics.length >= 3);
     assert.ok(diagnostics.some((item) => item.message.includes("insecure HTTP")));
 
-    const actions = await vscode.commands.executeCommand<(vscode.CodeAction | vscode.Command)[]>(
-      "vscode.executeCodeActionProvider",
-      mcpUri,
-      diagnostics[0].range
+    const actionGroups = await Promise.all(
+      diagnostics.map((diagnostic) =>
+        vscode.commands.executeCommand<(vscode.CodeAction | vscode.Command)[]>(
+          "vscode.executeCodeActionProvider",
+          mcpUri,
+          diagnostic.range
+        )
+      )
     );
 
-    const titles = (actions ?? []).map((item) => item.title);
+    const titles = actionGroups.flatMap((actions) => (actions ?? []).map((item) => item.title));
     assert.ok(titles.some((title) => title.includes("HTTPS") || title.includes("Replace")));
   });
 
@@ -62,6 +66,45 @@ export async function run(): Promise<void> {
 
     await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(original, "utf8"));
     await execFileAsync("git", ["checkout", "--", ".vscode/mcp.json"], { cwd: workspaceFolder.uri.fsPath });
+  });
+
+  await runStep("analyzeWorkspace exposes contract quick fixes", async () => {
+    const contractFixture = {
+      protectedPaths: [".github/workflows/**"],
+      requiredVerification: [],
+      blockedCommands: ["git push --force"],
+      blockedMcpServers: [],
+      notes: "Fixture contract"
+    };
+    await vscode.workspace.fs.writeFile(
+      contractUri,
+      Buffer.from(`${JSON.stringify(contractFixture, null, 2)}\n`, "utf8")
+    );
+
+    const contractDocument = await vscode.workspace.openTextDocument(contractUri);
+    await vscode.window.showTextDocument(contractDocument);
+
+    await vscode.commands.executeCommand("agentContracts.analyzeWorkspace");
+    await waitForDiagnostics(contractUri);
+
+    const diagnostics = vscode.languages.getDiagnostics(contractUri);
+    assert.ok(diagnostics.length >= 2);
+    assert.ok(diagnostics.some((item) => item.message.includes("Required verification is empty")));
+    assert.ok(diagnostics.some((item) => item.message.includes("Sensitive-looking files")));
+
+    const actionGroups = await Promise.all(
+      diagnostics.map((diagnostic) =>
+        vscode.commands.executeCommand<(vscode.CodeAction | vscode.Command)[]>(
+          "vscode.executeCodeActionProvider",
+          contractUri,
+          diagnostic.range
+        )
+      )
+    );
+
+    const titles = actionGroups.flatMap((actions) => (actions ?? []).map((item) => item.title));
+    assert.ok(titles.some((title) => title.includes("verification commands")));
+    assert.ok(titles.some((title) => title.includes("sensitive paths")));
   });
 }
 

@@ -1,0 +1,21 @@
+{
+  "protectedPaths": [
+    "**/.env*",
+    "**/*.pem",
+    ".github/workflows/**",
+    "terraform/**",
+    "infra/**",
+    "prod/**"
+  ],
+  "requiredVerification": [
+    "terraform fmt -check",
+    "terraform validate"
+  ],
+  "blockedCommands": [
+    "git push --force",
+    "rm -rf /",
+    "curl | sh"
+  ],
+  "blockedMcpServers": [],
+  "notes": "Starter policy for Terraform and infrastructure repositories."
+}

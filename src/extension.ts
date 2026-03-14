@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as vscode from "vscode";
-import { applyEdits, modify } from "jsonc-parser";
+import { applyEdits, findNodeAtLocation, modify, parseTree } from "jsonc-parser";
 
 import {
   contractUriForFolder,
@@ -12,8 +12,27 @@ import {
 import { analyzeWorkspace } from "./analyzer";
 import { getChangedFiles } from "./git";
 import { buildGuideMarkdown } from "./guide";
+import { CONTRACT_PRESETS } from "./presets";
 import { buildMarkdownReport } from "./report";
 import { AnalysisReport, AgentContract, Finding } from "./types";
+
+type TreeNode = GroupItem | FindingsItem;
+
+class GroupItem extends vscode.TreeItem {
+  constructor(
+    label: string,
+    readonly children: TreeNode[],
+    description?: string
+  ) {
+    super(
+      label,
+      children.length > 0
+        ? vscode.TreeItemCollapsibleState.Expanded
+        : vscode.TreeItemCollapsibleState.None
+    );
+    this.description = description;
+  }
+}
 
 class FindingsItem extends vscode.TreeItem {
   constructor(label: string, description?: string, command?: vscode.Command) {
@@ -23,8 +42,8 @@ class FindingsItem extends vscode.TreeItem {
   }
 }
 
-class FindingsProvider implements vscode.TreeDataProvider<FindingsItem> {
-  private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<FindingsItem | undefined>();
+class FindingsProvider implements vscode.TreeDataProvider<TreeNode> {
+  private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TreeNode | undefined>();
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
 
   private latestReport: AnalysisReport | undefined;
@@ -40,11 +59,15 @@ class FindingsProvider implements vscode.TreeDataProvider<FindingsItem> {
     }
   }
 
-  getTreeItem(element: FindingsItem): vscode.TreeItem {
+  getTreeItem(element: TreeNode): vscode.TreeItem {
     return element;
   }
 
-  getChildren(): Thenable<FindingsItem[]> {
+  getChildren(element?: TreeNode): Thenable<TreeNode[]> {
+    if (element instanceof GroupItem) {
+      return Promise.resolve(element.children);
+    }
+
     if (!this.latestReport) {
       return Promise.resolve([
         new FindingsItem("Analyze workspace", "Run the first scan", {
@@ -55,7 +78,7 @@ class FindingsProvider implements vscode.TreeDataProvider<FindingsItem> {
     }
 
     const report = this.latestReport;
-    const items: FindingsItem[] = [
+    const summaryItems: TreeNode[] = [
       new FindingsItem(`Trust Score ${report.trustScore}/100`, `${report.scope} scan`, {
         command: "agentContracts.openReport",
         title: "Open Report"
@@ -75,7 +98,7 @@ class FindingsProvider implements vscode.TreeDataProvider<FindingsItem> {
     ];
 
     if (!report.contractExists) {
-      items.push(
+      summaryItems.push(
         new FindingsItem("Initialize Contract", report.contractPath, {
           command: "agentContracts.initializeContract",
           title: "Initialize Contract"
@@ -84,7 +107,7 @@ class FindingsProvider implements vscode.TreeDataProvider<FindingsItem> {
     }
 
     if (report.recommendedVerification.length > 0) {
-      items.push(
+      summaryItems.push(
         new FindingsItem("Add Recommended Verification", `${report.recommendedVerification.length} command(s) available`, {
           command: "agentContracts.addRecommendedVerification",
           title: "Add Recommended Verification"
@@ -93,7 +116,7 @@ class FindingsProvider implements vscode.TreeDataProvider<FindingsItem> {
     }
 
     if (report.sensitiveFiles.length > 0) {
-      items.push(
+      summaryItems.push(
         new FindingsItem("Protect Sensitive Paths", `${report.sensitiveFiles.length} sensitive file(s) seen`, {
           command: "agentContracts.protectSensitivePaths",
           title: "Protect Sensitive Paths"
@@ -101,8 +124,20 @@ class FindingsProvider implements vscode.TreeDataProvider<FindingsItem> {
       );
     }
 
-    for (const finding of report.findings.slice(0, 12)) {
-      items.push(toFindingItem(finding));
+    summaryItems.push(
+      new FindingsItem("Apply Preset", "Node, Python, or Terraform", {
+        command: "agentContracts.applyPreset",
+        title: "Apply Preset"
+      })
+    );
+
+    const groups = buildFindingGroups(report.findings);
+    const items: TreeNode[] = [
+      new GroupItem("Workspace", summaryItems, `${report.findings.length} findings`)
+    ];
+
+    for (const group of groups) {
+      items.push(group);
     }
 
     return Promise.resolve(items);
@@ -111,6 +146,25 @@ class FindingsProvider implements vscode.TreeDataProvider<FindingsItem> {
   getLatestReport(): AnalysisReport | undefined {
     return this.latestReport;
   }
+}
+
+function buildFindingGroups(findings: Finding[]): GroupItem[] {
+  const groupSpecs: Array<{ label: string; severity: Finding["severity"] }> = [
+    { label: "Critical", severity: "critical" },
+    { label: "High", severity: "high" },
+    { label: "Medium", severity: "medium" },
+    { label: "Low", severity: "low" }
+  ];
+
+  return groupSpecs
+    .map(({ label, severity }) => {
+      const children = findings
+        .filter((finding) => finding.severity === severity)
+        .slice(0, 12)
+        .map(toFindingItem);
+      return new GroupItem(label, children, children.length > 0 ? `${children.length}` : "0");
+    })
+    .filter((group) => group.children.length > 0);
 }
 
 function toFindingItem(finding: Finding): FindingsItem {
@@ -248,6 +302,40 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand("agentContracts.applyPreset", async () => {
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      if (!folder) {
+        return;
+      }
+
+      const selection = await vscode.window.showQuickPick(
+        CONTRACT_PRESETS.map((preset) => ({
+          label: preset.label,
+          description: preset.description,
+          preset
+        })),
+        {
+          title: "Apply contract preset"
+        }
+      );
+
+      if (!selection) {
+        return;
+      }
+
+      const uri = contractUriForFolder(folder);
+      const existing = await readContract(uri);
+      const merged = existing ? mergeContracts(existing, selection.preset.contract) : selection.preset.contract;
+      await writeContract(uri, merged);
+
+      const document = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(document, { preview: false });
+      await provider.refresh(true, "workspace");
+      publishDiagnostics(diagnostics, provider.getLatestReport());
+    })
+  );
+
   const autoRefresh = vscode.workspace
     .getConfiguration("agentContracts")
     .get<boolean>("autoRefresh", true);
@@ -341,17 +429,18 @@ function unique(values: string[]): string[] {
 }
 
 function toDiagnosticRange(finding: Finding, uri: vscode.Uri): vscode.Range {
-  if (!finding.range) {
-    return new vscode.Range(0, 0, 0, 1);
-  }
-
   const document = vscode.workspace.textDocuments.find((item) => item.uri.toString() === uri.toString());
   if (!document) {
     return new vscode.Range(0, 0, 0, 1);
   }
 
-  const start = document.positionAt(finding.range.offset);
-  const end = document.positionAt(finding.range.offset + Math.max(finding.range.length, 1));
+  const range = finding.range ?? findJsonPathRange(document.getText(), finding.jsonPath);
+  if (!range) {
+    return new vscode.Range(0, 0, 0, 1);
+  }
+
+  const start = document.positionAt(range.offset);
+  const end = document.positionAt(range.offset + Math.max(range.length, 1));
   return new vscode.Range(start, end);
 }
 
@@ -367,7 +456,7 @@ class AgentContractsCodeActionProvider implements vscode.CodeActionProvider {
 
     const relativePath = path.relative(folder.uri.fsPath, document.uri.fsPath).split(path.sep).join("/");
     return report.findings
-      .filter((finding) => finding.location === relativePath && finding.fix && finding.range)
+      .filter((finding) => finding.location === relativePath && finding.fix)
       .filter((finding) => range.intersection(rangeFromFinding(document, finding)) !== undefined)
       .map((finding) => createQuickFix(document, finding))
       .filter((action): action is vscode.CodeAction => action !== undefined);
@@ -380,18 +469,7 @@ function createQuickFix(document: vscode.TextDocument, finding: Finding): vscode
   }
 
   try {
-    const edits = modify(
-      document.getText(),
-      finding.fix.path,
-      finding.fix.kind === "remove-property" ? undefined : finding.fix.value,
-      {
-        formattingOptions: {
-          insertSpaces: true,
-          tabSize: 2
-        }
-      }
-    );
-    const updated = applyEdits(document.getText(), edits);
+    const updated = applyFindingFix(document.getText(), finding);
     const action = new vscode.CodeAction(finding.fix.title, vscode.CodeActionKind.QuickFix);
     action.edit = new vscode.WorkspaceEdit();
     const fullRange = new vscode.Range(
@@ -412,12 +490,92 @@ function createQuickFix(document: vscode.TextDocument, finding: Finding): vscode
   }
 }
 
+function applyFindingFix(text: string, finding: Finding): string {
+  if (!finding.fix) {
+    return text;
+  }
+
+  if (finding.fix.kind === "append-unique") {
+    const current = JSON.parse(text) as unknown;
+    const existing = getValueAtPath(current, finding.fix.path);
+    const merged = Array.isArray(existing)
+      ? [...new Set([...existing, ...(Array.isArray(finding.fix.value) ? finding.fix.value : [])])]
+      : Array.isArray(finding.fix.value)
+        ? [...new Set(finding.fix.value)]
+        : [];
+    const edits = modify(text, finding.fix.path, merged, {
+      formattingOptions: {
+        insertSpaces: true,
+        tabSize: 2
+      }
+    });
+    return applyEdits(text, edits);
+  }
+
+  const edits = modify(
+    text,
+    finding.fix.path,
+    finding.fix.kind === "remove-property" ? undefined : finding.fix.value,
+    {
+      formattingOptions: {
+        insertSpaces: true,
+        tabSize: 2
+      }
+    }
+  );
+  return applyEdits(text, edits);
+}
+
 function rangeFromFinding(document: vscode.TextDocument, finding: Finding): vscode.Range {
-  if (!finding.range) {
+  const range = finding.range ?? findJsonPathRange(document.getText(), finding.jsonPath);
+  if (!range) {
     return new vscode.Range(0, 0, 0, 1);
   }
 
-  const start = document.positionAt(finding.range.offset);
-  const end = document.positionAt(finding.range.offset + Math.max(finding.range.length, 1));
+  const start = document.positionAt(range.offset);
+  const end = document.positionAt(range.offset + Math.max(range.length, 1));
   return new vscode.Range(start, end);
+}
+
+function getValueAtPath(root: unknown, pathSegments: Array<string | number>): unknown {
+  let current = root;
+  for (const segment of pathSegments) {
+    if (current === null || typeof current !== "object") {
+      return undefined;
+    }
+
+    current = (current as Record<string, unknown>)[String(segment)];
+  }
+
+  return current;
+}
+
+function mergeContracts(base: AgentContract, incoming: AgentContract): AgentContract {
+  return {
+    protectedPaths: unique([...base.protectedPaths, ...incoming.protectedPaths]),
+    requiredVerification: unique([...base.requiredVerification, ...incoming.requiredVerification]),
+    blockedCommands: unique([...base.blockedCommands, ...incoming.blockedCommands]),
+    blockedMcpServers: unique([...base.blockedMcpServers, ...incoming.blockedMcpServers]),
+    notes: base.notes ?? incoming.notes
+  };
+}
+
+function findJsonPathRange(
+  text: string,
+  jsonPath: Array<string | number> | undefined
+): { offset: number; length: number } | undefined {
+  if (!jsonPath) {
+    return undefined;
+  }
+
+  const root = parseTree(text);
+  const node = root ? findNodeAtLocation(root, jsonPath) : undefined;
+  if (!node) {
+    return undefined;
+  }
+
+  return {
+    offset: node.offset,
+    length: node.length
+  };
 }

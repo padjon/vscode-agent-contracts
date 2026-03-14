@@ -70,13 +70,13 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
   }
 
   const recommendedVerification = await detectRecommendedVerification(folder);
-  collectVerificationFindings(findings, contract, recommendedVerification);
+  collectVerificationFindings(findings, contract, recommendedVerification, contractPath);
 
   const allSensitiveFiles = await findSensitiveFiles(folder);
   const sensitiveFiles = scope === "changes"
     ? allSensitiveFiles.filter((file) => changedFileSet.has(file))
     : allSensitiveFiles;
-  collectSensitiveCoverageFindings(findings, contract, sensitiveFiles);
+  collectSensitiveCoverageFindings(findings, contract, sensitiveFiles, contractPath);
 
   const allMcpConfigs = await findMcpConfigs(folder);
   const mcpConfigs = scope === "changes"

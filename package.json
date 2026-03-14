@@ -2,7 +2,7 @@
   "name": "agent-contracts",
   "displayName": "Agent Contracts",
   "description": "Workspace trust contracts for MCP and AI-assisted development in VS Code.",
-  "version": "0.0.12",
+  "version": "1.0.0",
   "publisher": "padjon",
   "icon": "resources/icon.png",
   "sponsor": {
@@ -40,6 +40,7 @@
     "onCommand:agentContracts.openGuide",
     "onCommand:agentContracts.addRecommendedVerification",
     "onCommand:agentContracts.protectSensitivePaths",
+    "onCommand:agentContracts.applyPreset",
     "onView:agentContracts.findings"
   ],
   "main": "./out/src/extension.js",
@@ -82,6 +83,10 @@
       {
         "command": "agentContracts.protectSensitivePaths",
         "title": "Agent Contracts: Protect Sensitive Paths"
+      },
+      {
+        "command": "agentContracts.applyPreset",
+        "title": "Agent Contracts: Apply Contract Preset"
       }
     ],
     "configuration": {

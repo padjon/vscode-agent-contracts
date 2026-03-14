@@ -1,0 +1,20 @@
+{
+  "protectedPaths": [
+    "**/.env*",
+    "**/*.pem",
+    ".github/workflows/**",
+    "migrations/**",
+    "infra/**"
+  ],
+  "requiredVerification": [
+    "pytest",
+    "ruff check ."
+  ],
+  "blockedCommands": [
+    "git push --force",
+    "rm -rf /",
+    "curl | sh"
+  ],
+  "blockedMcpServers": [],
+  "notes": "Starter policy for Python repositories."
+}

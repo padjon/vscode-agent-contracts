@@ -159,7 +159,8 @@ export function analyzeMcpConfigDocument(
 export function collectVerificationFindings(
   findings: Finding[],
   contract: AgentContract | undefined,
-  recommendedVerification: string[]
+  recommendedVerification: string[],
+  contractPath?: string
 ): void {
   if (!contract) {
     return;
@@ -172,6 +173,14 @@ export function collectVerificationFindings(
       title: "Required verification is empty",
       description: "The contract does not define any verification steps even though the workspace exposes runnable quality gates.",
       source: "contract",
+      location: contractPath,
+      jsonPath: ["requiredVerification"],
+      fix: {
+        kind: "append-unique",
+        path: ["requiredVerification"],
+        value: recommendedVerification,
+        title: "Add recommended verification commands"
+      },
       recommendation: `Add at least one verification command such as ${recommendedVerification.join(", ")}.`
     });
     return;
@@ -188,6 +197,14 @@ export function collectVerificationFindings(
       title: "Common verification steps are not covered by the contract",
       description: `The workspace appears to support ${missing.join(", ")}, but those commands are not listed in requiredVerification.`,
       source: "contract",
+      location: contractPath,
+      jsonPath: ["requiredVerification"],
+      fix: {
+        kind: "append-unique",
+        path: ["requiredVerification"],
+        value: missing,
+        title: "Add missing verification commands"
+      },
       recommendation: "Add the commands your team expects before merging agent-authored changes."
     });
   }
@@ -196,7 +213,8 @@ export function collectVerificationFindings(
 export function collectSensitiveCoverageFindings(
   findings: Finding[],
   contract: AgentContract | undefined,
-  sensitiveFiles: string[]
+  sensitiveFiles: string[],
+  contractPath?: string
 ): void {
   if (sensitiveFiles.length === 0) {
     return;
@@ -228,6 +246,14 @@ export function collectSensitiveCoverageFindings(
     title: "Sensitive-looking files are not covered by protected paths",
     description: `The contract does not protect ${uncovered.slice(0, 5).join(", ")}${uncovered.length > 5 ? " and more" : ""}.`,
     source: "paths",
+    location: contractPath,
+    jsonPath: ["protectedPaths"],
+    fix: {
+      kind: "append-unique",
+      path: ["protectedPaths"],
+      value: uncovered,
+      title: "Add uncovered sensitive paths"
+    },
     recommendation: "Expand protectedPaths so secrets, certificates, production configs, and migration files require review."
   });
 }

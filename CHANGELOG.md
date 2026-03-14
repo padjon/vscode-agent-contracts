@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0
+
+- Added starter contract presets for Node, Python, and Terraform repositories
+- Added starter contract template files to the repository
+- Added contract-level quick fixes and sidebar grouping improvements
+- Promoted the extension to a stable 1.0 release
+
 ## 0.0.12
 
 - Switched README images to absolute GitHub raw URLs for more reliable marketplace rendering

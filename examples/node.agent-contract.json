@@ -1,0 +1,21 @@
+{
+  "protectedPaths": [
+    "**/.env*",
+    "**/*.pem",
+    ".github/workflows/**",
+    "migrations/**",
+    "prisma/migrations/**"
+  ],
+  "requiredVerification": [
+    "npm run lint",
+    "npm run test",
+    "npm run build"
+  ],
+  "blockedCommands": [
+    "git push --force",
+    "rm -rf /",
+    "curl | sh"
+  ],
+  "blockedMcpServers": [],
+  "notes": "Starter policy for JavaScript and TypeScript repositories."
+}

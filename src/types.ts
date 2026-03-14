@@ -2,7 +2,7 @@ export type Severity = "critical" | "high" | "medium" | "low";
 export type JsonPathSegment = string | number;
 
 export interface FindingFix {
-  kind: "set-value" | "remove-property";
+  kind: "set-value" | "remove-property" | "append-unique";
   path: JsonPathSegment[];
   value?: unknown;
   title: string;
