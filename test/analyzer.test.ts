@@ -40,6 +40,15 @@ test("analyzeMcpConfigDocument flags blocked servers, shell wrappers, http, and 
   assert(ids.some((id) => id.includes("mcp-shell")));
   assert(ids.some((id) => id.includes("mcp-http")));
   assert(ids.some((id) => id.includes("mcp-secret")));
+
+  const httpFinding = findings.find((finding) => finding.id.includes("mcp-http"));
+  assert.ok(httpFinding?.range);
+  assert.deepEqual(httpFinding?.jsonPath, ["servers", "forbidden", "url"]);
+  assert.equal(httpFinding?.fix?.kind, "set-value");
+
+  const blockedFinding = findings.find((finding) => finding.id.includes("mcp-blocked"));
+  assert.deepEqual(blockedFinding?.fix?.path, ["servers", "forbidden"]);
+  assert.equal(blockedFinding?.fix?.kind, "remove-property");
 });
 
 test("collectVerificationFindings flags missing recommended verification", () => {

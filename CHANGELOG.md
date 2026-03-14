@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.4
+
+- Added line-precise MCP diagnostics
+- Added MCP quick fixes for insecure HTTP URLs, blocked servers, and inline secrets
+- Added structured MCP finding metadata for better editor integration
+
 ## 0.0.3
 
 - Added analyzer unit tests

@@ -1,4 +1,17 @@
 export type Severity = "critical" | "high" | "medium" | "low";
+export type JsonPathSegment = string | number;
+
+export interface FindingFix {
+  kind: "set-value" | "remove-property";
+  path: JsonPathSegment[];
+  value?: unknown;
+  title: string;
+}
+
+export interface FindingRange {
+  offset: number;
+  length: number;
+}
 
 export interface AgentContract {
   protectedPaths: string[];
@@ -15,6 +28,9 @@ export interface Finding {
   description: string;
   source: string;
   location?: string;
+  range?: FindingRange;
+  jsonPath?: JsonPathSegment[];
+  fix?: FindingFix;
   recommendation?: string;
 }
 

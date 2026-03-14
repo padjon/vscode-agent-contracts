@@ -1,7 +1,7 @@
-import { parse } from "jsonc-parser";
+import { findNodeAtLocation, parse, parseTree } from "jsonc-parser";
 import minimatch = require("minimatch");
 
-import { AgentContract, Finding, Severity } from "./types";
+import { AgentContract, Finding, JsonPathSegment, Severity } from "./types";
 
 type McpConfig = {
   servers?: Record<string, Record<string, unknown>>;
@@ -21,6 +21,7 @@ export function analyzeMcpConfigDocument(
   const findings: Finding[] = [];
   try {
     const parsed = parse(raw) as McpConfig;
+    const root = parseTree(raw);
     const servers = parsed?.servers ?? {};
     const serverEntries = Object.entries(servers);
     if (serverEntries.length === 0) {
@@ -36,12 +37,15 @@ export function analyzeMcpConfigDocument(
     }
 
     for (const [serverName, config] of serverEntries) {
+      const serverPath: JsonPathSegment[] = ["servers", serverName];
       const command = stringValue(config.command);
       const url = stringValue(config.url);
       const args = arrayValue(config.args);
       const env = objectValue(config.env);
       const contractBlocksServer = contract?.blockedMcpServers.includes(serverName) ?? false;
       const commandLine = [command, ...args].filter(Boolean).join(" ").trim();
+      const commandPath: JsonPathSegment[] = [...serverPath, "command"];
+      const urlPath: JsonPathSegment[] = [...serverPath, "url"];
 
       if (contractBlocksServer) {
         findings.push({
@@ -51,6 +55,13 @@ export function analyzeMcpConfigDocument(
           description: `The contract explicitly blocks ${serverName}, but it still appears in ${relativePath}.`,
           source: "mcp",
           location: relativePath,
+          jsonPath: serverPath,
+          range: nodeRange(root, serverPath),
+          fix: {
+            kind: "remove-property",
+            path: serverPath,
+            title: `Remove blocked MCP server '${serverName}'`
+          },
           recommendation: "Remove the server from the MCP config or update the contract after review."
         });
       }
@@ -63,6 +74,8 @@ export function analyzeMcpConfigDocument(
           description: `Shell wrappers make the executed command harder to audit because the real behavior is hidden behind ${commandLine}.`,
           source: "mcp",
           location: relativePath,
+          jsonPath: commandPath,
+          range: nodeRange(root, commandPath),
           recommendation: "Prefer a direct executable and explicit arguments."
         });
       }
@@ -75,6 +88,8 @@ export function analyzeMcpConfigDocument(
           description: `${commandLine} relies on a package or container runner. That increases drift unless versions are pinned and reviewed.`,
           source: "mcp",
           location: relativePath,
+          jsonPath: commandPath,
+          range: nodeRange(root, commandPath),
           recommendation: "Pin exact versions and document why the runner is allowed in the contract."
         });
       }
@@ -87,6 +102,14 @@ export function analyzeMcpConfigDocument(
           description: `The MCP server URL for ${serverName} uses plain HTTP.`,
           source: "mcp",
           location: relativePath,
+          jsonPath: urlPath,
+          range: nodeRange(root, urlPath),
+          fix: {
+            kind: "set-value",
+            path: urlPath,
+            value: url.replace(/^http:\/\//i, "https://"),
+            title: `Switch ${serverName} URL to HTTPS`
+          },
           recommendation: "Use HTTPS or a local transport that does not expose the server over an unsecured network hop."
         });
       }
@@ -97,6 +120,7 @@ export function analyzeMcpConfigDocument(
         }
 
         if (typeof value === "string" && !/\$\{.+\}/.test(value)) {
+          const envPath: JsonPathSegment[] = [...serverPath, "env", key];
           findings.push({
             id: `mcp-secret-${relativePath}-${serverName}-${key}`,
             severity: "critical",
@@ -104,6 +128,14 @@ export function analyzeMcpConfigDocument(
             description: `The ${key} environment variable in ${relativePath} looks like a literal secret instead of a reference.`,
             source: "mcp",
             location: relativePath,
+            jsonPath: envPath,
+            range: nodeRange(root, envPath),
+            fix: {
+              kind: "set-value",
+              path: envPath,
+              value: `\${${key}}`,
+              title: `Replace ${key} with an environment reference`
+            },
             recommendation: "Reference environment variables or secure inputs instead of storing secrets inline."
           });
         }
@@ -222,4 +254,20 @@ function arrayValue(value: unknown): string[] {
 
 function objectValue(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function nodeRange(root: ReturnType<typeof parseTree>, path: JsonPathSegment[]) {
+  if (!root) {
+    return undefined;
+  }
+
+  const node = findNodeAtLocation(root, path);
+  if (!node) {
+    return undefined;
+  }
+
+  return {
+    offset: node.offset,
+    length: node.length
+  };
 }

@@ -17,6 +17,8 @@ It keeps a small policy file in the repo and uses it to answer practical questio
 - compares your contract with the verification scripts your repo already exposes
 - can add missing verification commands to the contract
 - can add current sensitive files to the contract as protected paths
+- adds line-precise diagnostics for MCP findings when the file is open
+- offers quick fixes for safe MCP cleanup cases
 - generates a readable report inside VS Code
 - shows findings and shortcuts in a dedicated Activity Bar view
 
@@ -134,6 +136,12 @@ The first autofix commands currently supported are:
 
 - add inferred verification commands into `requiredVerification`
 - add currently detected sensitive files into `protectedPaths`
+
+For MCP config files, the current quick fixes cover:
+
+- switching `http://` MCP URLs to `https://`
+- removing MCP servers blocked by the contract
+- replacing inline secret values with `${ENV_VAR}` style references
 
 The trust score is only a prioritization signal. The detailed findings matter more than the number.
 

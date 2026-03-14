@@ -1,4 +1,6 @@
+import * as path from "path";
 import * as vscode from "vscode";
+import { applyEdits, modify } from "jsonc-parser";
 
 import {
   contractUriForFolder,
@@ -140,7 +142,14 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("agentContracts.findings", provider),
-    diagnostics
+    diagnostics,
+    vscode.languages.registerCodeActionsProvider(
+      [{ language: "json" }, { language: "jsonc" }],
+      new AgentContractsCodeActionProvider(provider),
+      {
+        providedCodeActionKinds: [vscode.CodeActionKind.QuickFix]
+      }
+    )
   );
 
   context.subscriptions.push(
@@ -296,12 +305,14 @@ function publishDiagnostics(
     }
 
     const uri = vscode.Uri.joinPath(folder.uri, ...finding.location.split("/"));
+    const range = toDiagnosticRange(finding, uri);
     const diagnostic = new vscode.Diagnostic(
-      new vscode.Range(0, 0, 0, 1),
+      range,
       finding.recommendation ? `${finding.title}: ${finding.recommendation}` : finding.title,
       toDiagnosticSeverity(finding)
     );
     diagnostic.source = "Agent Contracts";
+    diagnostic.code = finding.id;
 
     const current = grouped.get(uri.toString()) ?? [];
     current.push(diagnostic);
@@ -327,4 +338,86 @@ function toDiagnosticSeverity(finding: Finding): vscode.DiagnosticSeverity {
 
 function unique(values: string[]): string[] {
   return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+
+function toDiagnosticRange(finding: Finding, uri: vscode.Uri): vscode.Range {
+  if (!finding.range) {
+    return new vscode.Range(0, 0, 0, 1);
+  }
+
+  const document = vscode.workspace.textDocuments.find((item) => item.uri.toString() === uri.toString());
+  if (!document) {
+    return new vscode.Range(0, 0, 0, 1);
+  }
+
+  const start = document.positionAt(finding.range.offset);
+  const end = document.positionAt(finding.range.offset + Math.max(finding.range.length, 1));
+  return new vscode.Range(start, end);
+}
+
+class AgentContractsCodeActionProvider implements vscode.CodeActionProvider {
+  constructor(private readonly provider: FindingsProvider) {}
+
+  provideCodeActions(document: vscode.TextDocument, range: vscode.Range): vscode.CodeAction[] {
+    const report = this.provider.getLatestReport();
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    if (!report || !folder) {
+      return [];
+    }
+
+    const relativePath = path.relative(folder.uri.fsPath, document.uri.fsPath).split(path.sep).join("/");
+    return report.findings
+      .filter((finding) => finding.location === relativePath && finding.fix && finding.range)
+      .filter((finding) => range.intersection(rangeFromFinding(document, finding)) !== undefined)
+      .map((finding) => createQuickFix(document, finding))
+      .filter((action): action is vscode.CodeAction => action !== undefined);
+  }
+}
+
+function createQuickFix(document: vscode.TextDocument, finding: Finding): vscode.CodeAction | undefined {
+  if (!finding.fix) {
+    return undefined;
+  }
+
+  try {
+    const edits = modify(
+      document.getText(),
+      finding.fix.path,
+      finding.fix.kind === "remove-property" ? undefined : finding.fix.value,
+      {
+        formattingOptions: {
+          insertSpaces: true,
+          tabSize: 2
+        }
+      }
+    );
+    const updated = applyEdits(document.getText(), edits);
+    const action = new vscode.CodeAction(finding.fix.title, vscode.CodeActionKind.QuickFix);
+    action.edit = new vscode.WorkspaceEdit();
+    const fullRange = new vscode.Range(
+      document.positionAt(0),
+      document.positionAt(document.getText().length)
+    );
+    action.edit.replace(document.uri, fullRange, updated);
+    action.diagnostics = [
+      new vscode.Diagnostic(
+        rangeFromFinding(document, finding),
+        finding.title,
+        toDiagnosticSeverity(finding)
+      )
+    ];
+    return action;
+  } catch {
+    return undefined;
+  }
+}
+
+function rangeFromFinding(document: vscode.TextDocument, finding: Finding): vscode.Range {
+  if (!finding.range) {
+    return new vscode.Range(0, 0, 0, 1);
+  }
+
+  const start = document.positionAt(finding.range.offset);
+  const end = document.positionAt(finding.range.offset + Math.max(finding.range.length, 1));
+  return new vscode.Range(start, end);
 }
