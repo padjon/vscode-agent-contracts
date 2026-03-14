@@ -1,0 +1,8 @@
+src/**
+docs/**
+tsconfig.json
+.github/**
+**/*.ts
+**/*.map
+.gitignore
+.agent-contract.json

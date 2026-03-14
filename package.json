@@ -1,0 +1,131 @@
+{
+  "name": "agent-contracts",
+  "displayName": "Agent Contracts",
+  "description": "Workspace trust contracts for MCP and AI-assisted development in VS Code.",
+  "version": "0.0.1",
+  "publisher": "padjon",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/padjon/agent-contracts-vscode.git"
+  },
+  "engines": {
+    "vscode": "^1.109.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:agentContracts.analyzeWorkspace",
+    "onCommand:agentContracts.initializeContract",
+    "onCommand:agentContracts.openReport",
+    "onView:agentContracts.findings"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "package": "npx @vscode/vsce package",
+    "prepublishOnly": "npm run compile"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "agentContracts.analyzeWorkspace",
+        "title": "Agent Contracts: Analyze Workspace"
+      },
+      {
+        "command": "agentContracts.initializeContract",
+        "title": "Agent Contracts: Initialize Contract"
+      },
+      {
+        "command": "agentContracts.openReport",
+        "title": "Agent Contracts: Open Report"
+      }
+    ],
+    "configuration": {
+      "title": "Agent Contracts",
+      "properties": {
+        "agentContracts.contractFileName": {
+          "type": "string",
+          "default": ".agent-contract.json",
+          "description": "Workspace-relative path to the trust contract file."
+        },
+        "agentContracts.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Refresh findings automatically after saves to MCP or contract files."
+        },
+        "agentContracts.mcpConfigGlobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            ".vscode/mcp.json"
+          ],
+          "description": "Workspace-relative globs for MCP configuration files to analyze."
+        },
+        "agentContracts.sensitiveFileGlobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/.env*",
+            "**/*.pem",
+            "**/*.key",
+            "**/*.p12",
+            "**/*.crt",
+            "**/.npmrc",
+            "**/.pypirc",
+            "**/secrets*.json",
+            "**/secrets*.yaml",
+            "**/secrets*.yml",
+            "**/secrets*.env"
+          ],
+          "description": "Glob patterns that should usually be covered by protected paths in the contract."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "agentContracts",
+          "title": "Agent Contracts",
+          "icon": "resources/shield.svg"
+        }
+      ]
+    },
+    "views": {
+      "agentContracts": [
+        {
+          "id": "agentContracts.findings",
+          "name": "Workspace Trust"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "agentContracts.analyzeWorkspace",
+          "when": "view == agentContracts.findings",
+          "group": "navigation"
+        },
+        {
+          "command": "agentContracts.openReport",
+          "when": "view == agentContracts.findings",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "@types/minimatch": "^5.1.2",
+    "@types/node": "^25.5.0",
+    "@types/vscode": "^1.109.0",
+    "@vscode/vsce": "^3.7.1",
+    "typescript": "^5.9.3"
+  }
+}

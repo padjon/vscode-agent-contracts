@@ -1,0 +1,23 @@
+{
+  "protectedPaths": [
+    "**/.env*",
+    "**/*.pem",
+    "**/*.key",
+    ".github/workflows/**",
+    "infra/**",
+    "terraform/**",
+    "migrations/**",
+    "prod/**"
+  ],
+  "requiredVerification": [
+    "npm run compile",
+    "npm run package"
+  ],
+  "blockedCommands": [
+    "git push --force",
+    "rm -rf /",
+    "curl | sh"
+  ],
+  "blockedMcpServers": [],
+  "notes": "This repository is the reference implementation for Agent Contracts. Keep packaging and compilation as explicit verification steps."
+}
