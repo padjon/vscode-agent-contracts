@@ -9,6 +9,7 @@ import {
 import {
   analyzeMcpConfigDocument,
   calculateTrustScore,
+  collectMcpPolicySignalsDocument,
   collectSensitiveCoverageFindings,
   collectVerificationFindings
 } from "./analyzer-core";
@@ -53,6 +54,8 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
       sensitiveFiles: [],
       changedFiles,
       changedFileDetails: [],
+      observedMcpHosts: [],
+      observedMcpRunnerTargets: [],
       recommendedVerification: [],
       summary: "No workspace folder is open."
     };
@@ -88,6 +91,8 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
   const mcpConfigs = scope === "changes"
     ? allMcpConfigs.filter((uri) => changedFileSet.has(toRelative(folder, uri)))
     : allMcpConfigs;
+  const observedMcpHosts = new Set<string>();
+  const observedMcpRunnerTargets = new Set<string>();
   if (mcpConfigs.length === 0) {
     findings.push({
       id: "missing-mcp-config",
@@ -104,8 +109,14 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
   }
 
   for (const uri of mcpConfigs) {
-    const configFindings = await analyzeMcpConfig(folder, uri, contract);
+    const { findings: configFindings, remoteHosts, runnerTargets } = await analyzeMcpConfig(folder, uri, contract);
     findings.push(...configFindings);
+    for (const host of remoteHosts) {
+      observedMcpHosts.add(host);
+    }
+    for (const target of runnerTargets) {
+      observedMcpRunnerTargets.add(target);
+    }
   }
 
   if (contract && contract.blockedCommands.length === 0) {
@@ -143,6 +154,8 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
     sensitiveFiles,
     changedFiles,
     changedFileDetails: enrichedChangedFileDetails,
+    observedMcpHosts: [...observedMcpHosts].sort((left, right) => left.localeCompare(right)),
+    observedMcpRunnerTargets: [...observedMcpRunnerTargets].sort((left, right) => left.localeCompare(right)),
     recommendedVerification,
     summary
   };
@@ -152,10 +165,16 @@ async function analyzeMcpConfig(
   folder: vscode.WorkspaceFolder,
   uri: vscode.Uri,
   contract: AgentContract | undefined
-): Promise<Finding[]> {
+): Promise<{ findings: Finding[]; remoteHosts: string[]; runnerTargets: string[] }> {
   const relativePath = toRelative(folder, uri);
   const raw = textDecoder.decode(await vscode.workspace.fs.readFile(uri));
-  return analyzeMcpConfigDocument(relativePath, raw, contract);
+  const findings = analyzeMcpConfigDocument(relativePath, raw, contract);
+  const signals = collectMcpPolicySignalsDocument(raw);
+  return {
+    findings,
+    remoteHosts: signals.remoteHosts,
+    runnerTargets: signals.runnerTargets
+  };
 }
 
 async function findSensitiveFiles(folder: vscode.WorkspaceFolder): Promise<string[]> {

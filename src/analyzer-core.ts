@@ -14,6 +14,11 @@ const RISKY_RUNNER_PATTERN = /(^|\/)(npx|pnpx|pnpm|yarn|bunx|uvx|pipx|docker)(\.
 const HTTP_URL_PATTERN = /^http:\/\//i;
 const DANGEROUS_SHELL_CHAIN_PATTERN = /(\|\s*(sh|bash|zsh|fish|pwsh|powershell)\b|&&|;|\$\(|`|Invoke-WebRequest|iwr\b|curl\b|wget\b)/i;
 
+export interface McpPolicySignals {
+  remoteHosts: string[];
+  runnerTargets: string[];
+}
+
 export function analyzeMcpConfigDocument(
   relativePath: string,
   raw: string,
@@ -48,6 +53,8 @@ export function analyzeMcpConfigDocument(
       const commandPath: JsonPathSegment[] = [...serverPath, "command"];
       const urlPath: JsonPathSegment[] = [...serverPath, "url"];
       const shellCommand = extractShellCommand(args);
+      const runnerTarget = findRunnerTarget(command, args);
+      const remoteHost = url ? getRemoteHost(url) : undefined;
 
       if (contractBlocksServer) {
         findings.push({
@@ -97,17 +104,23 @@ export function analyzeMcpConfigDocument(
       }
 
       if (command && RISKY_RUNNER_PATTERN.test(command)) {
-        findings.push({
-          id: `mcp-runner-${relativePath}-${serverName}`,
-          severity: "medium",
-          title: `Server ${serverName} uses a package runner`,
-          description: `${commandLine} relies on a package or container runner. That increases drift unless versions are pinned and reviewed.`,
-          source: "mcp",
-          location: relativePath,
-          jsonPath: commandPath,
-          range: nodeRange(root, commandPath),
-          recommendation: "Pin exact versions and document why the runner is allowed in the contract."
-        });
+        if (!matchesAllowPattern(runnerTarget, contract?.allowedMcpRunnerTargets)) {
+          findings.push({
+            id: `mcp-runner-${relativePath}-${serverName}`,
+            severity: "medium",
+            title: `Server ${serverName} uses a package runner`,
+            description: runnerTarget
+              ? `${commandLine} relies on a package or container runner, and ${runnerTarget} is not allowlisted in the contract.`
+              : `${commandLine} relies on a package or container runner. That increases drift unless versions are pinned and reviewed.`,
+            source: "mcp",
+            location: relativePath,
+            jsonPath: commandPath,
+            range: nodeRange(root, commandPath),
+            recommendation: runnerTarget
+              ? "Approve the runner target in the contract only after reviewing the exact package or image."
+              : "Pin exact versions and document why the runner is allowed in the contract."
+          });
+        }
 
         if (!hasPinnedRunnerTarget(command, args)) {
           findings.push({
@@ -144,17 +157,17 @@ export function analyzeMcpConfigDocument(
         });
       }
 
-      if (url && isRemoteNetworkUrl(url) && !HTTP_URL_PATTERN.test(url)) {
+      if (remoteHost && !matchesAllowPattern(remoteHost, contract?.allowedMcpHosts)) {
         findings.push({
           id: `mcp-remote-${relativePath}-${serverName}`,
           severity: "medium",
-          title: `Server ${serverName} connects to a remote MCP endpoint`,
-          description: `The MCP server URL for ${serverName} points to a non-local host: ${url}.`,
+          title: `Server ${serverName} connects to a remote MCP endpoint that is not approved`,
+          description: `The MCP server URL for ${serverName} points to ${remoteHost}, which is not allowlisted in the contract.`,
           source: "mcp",
           location: relativePath,
           jsonPath: urlPath,
           range: nodeRange(root, urlPath),
-          recommendation: "Review ownership, authentication, and transport guarantees before trusting remote MCP services."
+          recommendation: "Review ownership, authentication, and transport guarantees before allowlisting the remote MCP host."
         });
       }
 
@@ -198,6 +211,41 @@ export function analyzeMcpConfigDocument(
   }
 
   return findings;
+}
+
+export function collectMcpPolicySignalsDocument(raw: string): McpPolicySignals {
+  try {
+    const parsed = parse(raw) as McpConfig;
+    const servers = parsed?.servers ?? {};
+    const remoteHosts = new Set<string>();
+    const runnerTargets = new Set<string>();
+
+    for (const config of Object.values(servers)) {
+      const command = stringValue(config.command);
+      const args = arrayValue(config.args);
+      const url = stringValue(config.url);
+      const remoteHost = url ? getRemoteHost(url) : undefined;
+      const runnerTarget = findRunnerTarget(command, args);
+
+      if (remoteHost) {
+        remoteHosts.add(remoteHost);
+      }
+
+      if (runnerTarget) {
+        runnerTargets.add(runnerTarget);
+      }
+    }
+
+    return {
+      remoteHosts: [...remoteHosts].sort((left, right) => left.localeCompare(right)),
+      runnerTargets: [...runnerTargets].sort((left, right) => left.localeCompare(right))
+    };
+  } catch {
+    return {
+      remoteHosts: [],
+      runnerTargets: []
+    };
+  }
 }
 
 export function collectVerificationFindings(
@@ -352,14 +400,13 @@ function extractShellCommand(args: string[]): string {
 }
 
 function hasPinnedRunnerTarget(command: string, args: string[]): boolean {
-  if (command.endsWith("docker") || command.endsWith("docker.exe")) {
-    const imageArg = findDockerImageArg(args);
-    return imageArg ? /:[^:/@]+$|@sha256:/i.test(imageArg) : false;
-  }
-
-  const target = args.find((arg) => isRunnerTargetArg(arg));
+  const target = findRunnerTarget(command, args);
   if (!target) {
     return false;
+  }
+
+  if (command.endsWith("docker") || command.endsWith("docker.exe")) {
+    return /:[^:/@]+$|@sha256:/i.test(target);
   }
 
   return isPinnedPackageSpecifier(target);
@@ -381,6 +428,27 @@ function findDockerImageArg(args: string[]): string | undefined {
   }
 
   return undefined;
+}
+
+function findRunnerTarget(command: string, args: string[]): string | undefined {
+  if (!command || !RISKY_RUNNER_PATTERN.test(command)) {
+    return undefined;
+  }
+
+  if (command.endsWith("docker") || command.endsWith("docker.exe")) {
+    return findDockerImageArg(args);
+  }
+
+  const filtered = args.filter((arg) => isRunnerTargetArg(arg));
+  if (filtered.length === 0) {
+    return undefined;
+  }
+
+  if (filtered[0] === "dlx" || filtered[0] === "exec" || filtered[0] === "run") {
+    return filtered[1];
+  }
+
+  return filtered[0];
 }
 
 function isRunnerTargetArg(value: string): boolean {
@@ -407,17 +475,25 @@ function isPinnedPackageSpecifier(value: string): boolean {
   return false;
 }
 
-function isRemoteNetworkUrl(value: string): boolean {
+function getRemoteHost(value: string): string | undefined {
   try {
     const url = new URL(value);
     if (!/^https?:$/i.test(url.protocol)) {
-      return false;
+      return undefined;
     }
 
-    return !isLocalHost(url.hostname);
+    return isLocalHost(url.hostname) ? undefined : url.hostname.toLowerCase();
   } catch {
+    return undefined;
+  }
+}
+
+function matchesAllowPattern(value: string | undefined, patterns: string[] | undefined): boolean {
+  if (!value || !patterns || patterns.length === 0) {
     return false;
   }
+
+  return patterns.some((pattern) => minimatch(value, pattern, { nocase: true }));
 }
 
 function isLocalHost(hostname: string): boolean {

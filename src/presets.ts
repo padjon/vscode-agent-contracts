@@ -31,6 +31,8 @@ export const CONTRACT_PRESETS: ContractPreset[] = [
         "curl | sh"
       ],
       blockedMcpServers: [],
+      allowedMcpHosts: [],
+      allowedMcpRunnerTargets: [],
       notes: "Preset for Node and TypeScript repositories. Review scripts and paths before committing."
     }
   },
@@ -56,6 +58,8 @@ export const CONTRACT_PRESETS: ContractPreset[] = [
         "curl | sh"
       ],
       blockedMcpServers: [],
+      allowedMcpHosts: [],
+      allowedMcpRunnerTargets: [],
       notes: "Preset for Python repositories. Replace commands with your actual test and lint entrypoints."
     }
   },
@@ -82,6 +86,8 @@ export const CONTRACT_PRESETS: ContractPreset[] = [
         "curl | sh"
       ],
       blockedMcpServers: [],
+      allowedMcpHosts: [],
+      allowedMcpRunnerTargets: [],
       notes: "Preset for Terraform repositories. Add plan and policy checks that match your pipeline."
     }
   }

@@ -29,7 +29,9 @@ export function defaultContract(requiredVerification: string[]): AgentContract {
     requiredVerification,
     blockedCommands: DEFAULT_BLOCKED_COMMANDS,
     blockedMcpServers: [],
-    notes: "List high-risk paths, required verification steps, and disallowed MCP servers for this repository."
+    allowedMcpHosts: [],
+    allowedMcpRunnerTargets: [],
+    notes: "List sensitive paths, required verification steps, blocked MCP servers, and any explicitly approved MCP hosts or runner targets."
   };
 }
 
@@ -55,6 +57,8 @@ export async function readContract(uri: vscode.Uri): Promise<AgentContract | und
     requiredVerification: Array.isArray(parsed.requiredVerification) ? parsed.requiredVerification : [],
     blockedCommands: Array.isArray(parsed.blockedCommands) ? parsed.blockedCommands : [],
     blockedMcpServers: Array.isArray(parsed.blockedMcpServers) ? parsed.blockedMcpServers : [],
+    allowedMcpHosts: Array.isArray(parsed.allowedMcpHosts) ? parsed.allowedMcpHosts : [],
+    allowedMcpRunnerTargets: Array.isArray(parsed.allowedMcpRunnerTargets) ? parsed.allowedMcpRunnerTargets : [],
     notes: typeof parsed.notes === "string" ? parsed.notes : undefined
   };
 }

@@ -2,7 +2,7 @@
   "name": "agent-contracts",
   "displayName": "Agent Contracts",
   "description": "Workspace trust contracts for MCP and AI-assisted development in VS Code.",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "publisher": "padjon",
   "icon": "resources/icon.png",
   "sponsor": {
@@ -42,6 +42,8 @@
     "onCommand:agentContracts.protectSensitivePaths",
     "onCommand:agentContracts.applyPreset",
     "onCommand:agentContracts.applySafeFixes",
+    "onCommand:agentContracts.allowObservedMcpHosts",
+    "onCommand:agentContracts.allowObservedMcpRunnerTargets",
     "onView:agentContracts.findings"
   ],
   "main": "./out/src/extension.js",
@@ -92,6 +94,14 @@
       {
         "command": "agentContracts.applySafeFixes",
         "title": "Agent Contracts: Apply Safe Fixes"
+      },
+      {
+        "command": "agentContracts.allowObservedMcpHosts",
+        "title": "Agent Contracts: Allow Observed MCP Hosts"
+      },
+      {
+        "command": "agentContracts.allowObservedMcpRunnerTargets",
+        "title": "Agent Contracts: Allow Observed Runner Targets"
       }
     ],
     "configuration": {

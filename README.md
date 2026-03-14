@@ -22,6 +22,7 @@ It keeps a small policy file in the repo and uses it to answer practical questio
 - adds line-precise diagnostics for MCP findings when the file is open
 - offers quick fixes for safe MCP cleanup cases
 - can apply safe fixes across the current scan in one pass
+- can approve reviewed MCP hosts and runner targets in the contract
 - generates a readable report inside VS Code
 - shows findings and shortcuts in a dedicated Activity Bar view
 
@@ -65,6 +66,7 @@ The extension scans workspace MCP configs and flags patterns such as:
 - unpinned runner targets
 - insecure `http://` MCP URLs
 - remote MCP endpoints outside the local machine
+- remote hosts and runner targets that are not approved in the contract
 - inline secrets in environment variables
 - MCP servers blocked by the contract but still configured
 
@@ -111,7 +113,9 @@ The extension stores its policy in `.agent-contract.json`.
     "rm -rf /",
     "curl | sh"
   ],
-  "blockedMcpServers": []
+  "blockedMcpServers": [],
+  "allowedMcpHosts": [],
+  "allowedMcpRunnerTargets": []
 }
 ```
 
@@ -136,6 +140,8 @@ Examples of things the extension will report:
 - `Agent Contracts: Protect Sensitive Paths`
 - `Agent Contracts: Apply Contract Preset`
 - `Agent Contracts: Apply Safe Fixes`
+- `Agent Contracts: Allow Observed MCP Hosts`
+- `Agent Contracts: Allow Observed Runner Targets`
 
 ## View
 
@@ -158,6 +164,7 @@ The first autofix commands currently supported are:
 - add currently detected sensitive files into `protectedPaths`
 - merge starter policies for Node, Python, and Terraform repos
 - apply all safe fixes from the current scan in one pass
+- write reviewed MCP hosts and runner targets into the contract
 
 For MCP config files, the current quick fixes cover:
 

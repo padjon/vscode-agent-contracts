@@ -59,6 +59,8 @@ export async function run(): Promise<void> {
       requiredVerification: [],
       blockedCommands: ["git push --force"],
       blockedMcpServers: ["forbidden"],
+      allowedMcpHosts: [],
+      allowedMcpRunnerTargets: [],
       notes: "Fixture contract"
     };
     await vscode.workspace.fs.writeFile(
@@ -99,12 +101,52 @@ export async function run(): Promise<void> {
     await execFileAsync("git", ["checkout", "--", ".vscode/mcp.json"], { cwd: workspaceFolder.uri.fsPath });
   });
 
+  await runStep("allowObservedMcp approvals write hosts and runner targets into the contract", async () => {
+    const contractFixture = {
+      protectedPaths: [".github/workflows/**"],
+      requiredVerification: ["npm run lint"],
+      blockedCommands: ["git push --force"],
+      blockedMcpServers: [],
+      allowedMcpHosts: [],
+      allowedMcpRunnerTargets: [],
+      notes: "Fixture contract"
+    };
+    await vscode.workspace.fs.writeFile(
+      contractUri,
+      Buffer.from(`${JSON.stringify(contractFixture, null, 2)}\n`, "utf8")
+    );
+
+    const originalMcp = Buffer.from(await vscode.workspace.fs.readFile(mcpUri)).toString("utf8");
+    const updatedMcp = JSON.stringify({
+      servers: {
+        approved: {
+          command: "npx",
+          args: ["forbidden-mcp@1.0.0"],
+          url: "https://mcp.example.com"
+        }
+      }
+    }, null, 2);
+    await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(updatedMcp, "utf8"));
+
+    await vscode.commands.executeCommand("agentContracts.analyzeWorkspace");
+    await vscode.commands.executeCommand("agentContracts.allowObservedMcpHosts");
+    await vscode.commands.executeCommand("agentContracts.allowObservedMcpRunnerTargets");
+
+    const updatedContract = Buffer.from(await vscode.workspace.fs.readFile(contractUri)).toString("utf8");
+    assert.match(updatedContract, /"allowedMcpHosts": \[\s*"mcp\.example\.com"/);
+    assert.match(updatedContract, /"allowedMcpRunnerTargets": \[\s*"forbidden-mcp@1\.0\.0"/);
+
+    await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(originalMcp, "utf8"));
+  });
+
   await runStep("analyzeWorkspace exposes contract quick fixes", async () => {
     const contractFixture = {
       protectedPaths: [".github/workflows/**"],
       requiredVerification: [],
       blockedCommands: ["git push --force"],
       blockedMcpServers: [],
+      allowedMcpHosts: [],
+      allowedMcpRunnerTargets: [],
       notes: "Fixture contract"
     };
     await vscode.workspace.fs.writeFile(

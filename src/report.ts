@@ -47,6 +47,14 @@ ${formatList(report.recommendedVerification)}
 
 ${formatList(report.mcpConfigs)}
 
+## Observed MCP hosts
+
+${formatList(report.observedMcpHosts)}
+
+## Observed MCP runner targets
+
+${formatList(report.observedMcpRunnerTargets)}
+
 ## Sensitive paths seen
 
 ${formatList(report.sensitiveFiles.slice(0, 20))}

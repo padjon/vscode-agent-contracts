@@ -18,6 +18,8 @@ export interface AgentContract {
   requiredVerification: string[];
   blockedCommands: string[];
   blockedMcpServers: string[];
+  allowedMcpHosts: string[];
+  allowedMcpRunnerTargets: string[];
   notes?: string;
 }
 
@@ -56,6 +58,8 @@ export interface AnalysisReport {
   sensitiveFiles: string[];
   changedFiles: string[];
   changedFileDetails: ChangedFileDetail[];
+  observedMcpHosts: string[];
+  observedMcpRunnerTargets: string[];
   recommendedVerification: string[];
   summary: string;
 }

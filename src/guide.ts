@@ -44,6 +44,8 @@ The extension scans workspace MCP configs and looks for patterns that are easy t
 
 - shell wrappers such as \`bash -c\`
 - package runners such as \`npx\` or \`docker\`
+- remote MCP hosts that are not approved in the contract
+- runner targets that are not approved in the contract
 - insecure \`http://\` MCP URLs
 - inline secrets in environment variables
 - MCP servers blocked by the contract but still configured

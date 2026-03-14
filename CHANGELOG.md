@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0
+
+- Added contract-aware MCP approvals for reviewed remote hosts and runner targets
+- Added sidebar commands to write observed MCP hosts and runner targets into the contract
+
 ## 1.2.0
 
 - Added `Apply Safe Fixes` to update contract and MCP files from the current scan in one pass

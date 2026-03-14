@@ -117,6 +117,24 @@ class FindingsProvider implements vscode.TreeDataProvider<TreeNode> {
       );
     }
 
+    if (report.observedMcpHosts.length > 0) {
+      summaryItems.push(
+        new FindingsItem("Allow Observed MCP Hosts", `${report.observedMcpHosts.length} host(s)`, {
+          command: "agentContracts.allowObservedMcpHosts",
+          title: "Allow Observed MCP Hosts"
+        })
+      );
+    }
+
+    if (report.observedMcpRunnerTargets.length > 0) {
+      summaryItems.push(
+        new FindingsItem("Allow Observed Runner Targets", `${report.observedMcpRunnerTargets.length} target(s)`, {
+          command: "agentContracts.allowObservedMcpRunnerTargets",
+          title: "Allow Observed Runner Targets"
+        })
+      );
+    }
+
     if (!report.contractExists) {
       summaryItems.push(
         new FindingsItem("Initialize Contract", report.contractPath, {
@@ -411,6 +429,54 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand("agentContracts.allowObservedMcpHosts", async () => {
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      if (!folder) {
+        return;
+      }
+
+      const report = provider.getLatestReport() ?? await analyzeWorkspace();
+      if (report.observedMcpHosts.length === 0) {
+        void vscode.window.showInformationMessage("No remote MCP hosts were detected in the current scan.");
+        return;
+      }
+
+      const uri = contractUriForFolder(folder);
+      const contract = await ensureContract(folder);
+      await writeContract(uri, {
+        ...contract,
+        allowedMcpHosts: unique([...contract.allowedMcpHosts, ...report.observedMcpHosts])
+      });
+      await provider.refresh(true, report.scope);
+      publishDiagnostics(diagnostics, provider.getLatestReport());
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("agentContracts.allowObservedMcpRunnerTargets", async () => {
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      if (!folder) {
+        return;
+      }
+
+      const report = provider.getLatestReport() ?? await analyzeWorkspace();
+      if (report.observedMcpRunnerTargets.length === 0) {
+        void vscode.window.showInformationMessage("No MCP runner targets were detected in the current scan.");
+        return;
+      }
+
+      const uri = contractUriForFolder(folder);
+      const contract = await ensureContract(folder);
+      await writeContract(uri, {
+        ...contract,
+        allowedMcpRunnerTargets: unique([...contract.allowedMcpRunnerTargets, ...report.observedMcpRunnerTargets])
+      });
+      await provider.refresh(true, report.scope);
+      publishDiagnostics(diagnostics, provider.getLatestReport());
+    })
+  );
+
   const autoRefresh = vscode.workspace
     .getConfiguration("agentContracts")
     .get<boolean>("autoRefresh", true);
@@ -649,6 +715,8 @@ function mergeContracts(base: AgentContract, incoming: AgentContract): AgentCont
     requiredVerification: unique([...base.requiredVerification, ...incoming.requiredVerification]),
     blockedCommands: unique([...base.blockedCommands, ...incoming.blockedCommands]),
     blockedMcpServers: unique([...base.blockedMcpServers, ...incoming.blockedMcpServers]),
+    allowedMcpHosts: unique([...base.allowedMcpHosts, ...incoming.allowedMcpHosts]),
+    allowedMcpRunnerTargets: unique([...base.allowedMcpRunnerTargets, ...incoming.allowedMcpRunnerTargets]),
     notes: base.notes ?? incoming.notes
   };
 }

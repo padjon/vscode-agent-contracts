@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   analyzeMcpConfigDocument,
   calculateTrustScore,
+  collectMcpPolicySignalsDocument,
   collectSensitiveCoverageFindings,
   collectVerificationFindings
 } from "../src/analyzer-core";
@@ -14,6 +15,8 @@ const contract: AgentContract = {
   requiredVerification: ["npm run test"],
   blockedCommands: [],
   blockedMcpServers: ["forbidden"],
+  allowedMcpHosts: [],
+  allowedMcpRunnerTargets: [],
   notes: ""
 };
 
@@ -75,6 +78,47 @@ test("analyzeMcpConfigDocument flags dangerous shell chains, unpinned runners, a
   assert(ids.some((id) => id.includes("mcp-runner-unpinned")));
   assert(ids.some((id) => id.includes("mcp-remote")));
   assert(ids.some((id) => id.includes("mcp-shell-chain")));
+});
+
+test("analyzeMcpConfigDocument respects allowlisted MCP hosts and runner targets", () => {
+  const findings = analyzeMcpConfigDocument(
+    ".vscode/mcp.json",
+    JSON.stringify({
+      servers: {
+        github: {
+          command: "docker",
+          args: ["run", "--rm", "ghcr.io/example/github-mcp:1.2.3"],
+          url: "https://mcp.example.com"
+        }
+      }
+    }),
+    {
+      ...contract,
+      allowedMcpHosts: ["mcp.example.com"],
+      allowedMcpRunnerTargets: ["ghcr.io/example/github-mcp:1.2.3"]
+    }
+  );
+
+  const ids = findings.map((finding) => finding.id);
+  assert(!ids.some((id) => id.includes("mcp-remote")));
+  assert(!ids.some((id) => id.includes("mcp-runner-")));
+});
+
+test("collectMcpPolicySignalsDocument returns observed remote hosts and runner targets", () => {
+  const signals = collectMcpPolicySignalsDocument(
+    JSON.stringify({
+      servers: {
+        github: {
+          command: "pnpm",
+          args: ["dlx", "@modelcontextprotocol/server-github@1.0.0"],
+          url: "https://mcp.example.com"
+        }
+      }
+    })
+  );
+
+  assert.deepEqual(signals.remoteHosts, ["mcp.example.com"]);
+  assert.deepEqual(signals.runnerTargets, ["@modelcontextprotocol/server-github@1.0.0"]);
 });
 
 test("collectVerificationFindings flags missing recommended verification", () => {
