@@ -2,7 +2,7 @@
   "name": "agent-contracts",
   "displayName": "Agent Contracts",
   "description": "Workspace trust contracts for MCP and AI-assisted development in VS Code.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "padjon",
   "license": "MIT",
   "repository": {
@@ -20,6 +20,7 @@
     "onCommand:agentContracts.analyzeWorkspace",
     "onCommand:agentContracts.initializeContract",
     "onCommand:agentContracts.openReport",
+    "onCommand:agentContracts.openGuide",
     "onView:agentContracts.findings"
   ],
   "main": "./out/extension.js",
@@ -42,6 +43,10 @@
       {
         "command": "agentContracts.openReport",
         "title": "Agent Contracts: Open Report"
+      },
+      {
+        "command": "agentContracts.openGuide",
+        "title": "Agent Contracts: How It Works"
       }
     ],
     "configuration": {
@@ -115,6 +120,11 @@
         },
         {
           "command": "agentContracts.openReport",
+          "when": "view == agentContracts.findings",
+          "group": "navigation"
+        },
+        {
+          "command": "agentContracts.openGuide",
           "when": "view == agentContracts.findings",
           "group": "navigation"
         }

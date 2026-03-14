@@ -7,6 +7,7 @@ import {
   writeContract
 } from "./contracts";
 import { analyzeWorkspace } from "./analyzer";
+import { buildGuideMarkdown } from "./guide";
 import { buildMarkdownReport } from "./report";
 import { AnalysisReport, Finding } from "./types";
 
@@ -52,6 +53,10 @@ class FindingsProvider implements vscode.TreeDataProvider<FindingsItem> {
       new FindingsItem(`Trust Score ${report.trustScore}/100`, report.contractExists ? "Contract loaded" : "Contract missing", {
         command: "agentContracts.openReport",
         title: "Open Report"
+      }),
+      new FindingsItem("How It Works", "Open the built-in guide", {
+        command: "agentContracts.openGuide",
+        title: "How It Works"
       }),
       new FindingsItem("Open Report", `${report.findings.length} findings`, {
         command: "agentContracts.openReport",
@@ -148,6 +153,16 @@ export function activate(context: vscode.ExtensionContext): void {
       const document = await vscode.workspace.openTextDocument({
         language: "markdown",
         content: buildMarkdownReport(report)
+      });
+      await vscode.window.showTextDocument(document, { preview: false });
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("agentContracts.openGuide", async () => {
+      const document = await vscode.workspace.openTextDocument({
+        language: "markdown",
+        content: buildGuideMarkdown()
       });
       await vscode.window.showTextDocument(document, { preview: false });
     })
