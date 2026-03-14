@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.7
+
+- Wrapped the remaining overflowing text in the quality marketplace asset
+- Regenerated the exported PNG for the corrected quality panel
+
 ## 0.0.6
 
 - Reduced SVG typography and split long labels to prevent panel overlap

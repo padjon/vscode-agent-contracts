@@ -25,8 +25,11 @@
   <text x="512" y="292" fill="#365344" font-family="Arial, sans-serif" font-size="18">
     VS Code host
   </text>
-  <text x="512" y="318" fill="#365344" font-family="Arial, sans-serif" font-size="18">
-    Exercises commands and diagnostics
+  <text x="512" y="316" fill="#365344" font-family="Arial, sans-serif" font-size="17">
+    Exercises commands
+  </text>
+  <text x="512" y="340" fill="#365344" font-family="Arial, sans-serif" font-size="17">
+    and diagnostics
   </text>
   <text x="888" y="226" fill="#1b4332" font-family="Arial, sans-serif" font-size="26" font-weight="700">
     CI workflow
