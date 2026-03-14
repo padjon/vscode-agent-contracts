@@ -64,6 +64,7 @@ npm run compile
 
 Press `F5` in VS Code to launch the extension host.
 
-## Research
+## Research and plan
 
 The trend and positioning analysis that drove this extension lives in [docs/research.md](docs/research.md).
+The execution roadmap and sponsor plan lives in [docs/plan.md](docs/plan.md).
