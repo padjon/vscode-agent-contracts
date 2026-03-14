@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.0
+
+- Added inline diagnostics for changed MCP server blocks during branch-focused scans
+- Filtered branch-scan MCP diagnostics down to the server entries that actually changed
+
 ## 1.4.0
 
 - Added server-level MCP diff review for changed-file scans

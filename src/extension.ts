@@ -14,7 +14,7 @@ import { getChangedFileDetails } from "./git";
 import { buildGuideMarkdown } from "./guide";
 import { CONTRACT_PRESETS } from "./presets";
 import { buildMarkdownReport } from "./report";
-import { AnalysisReport, AgentContract, Finding } from "./types";
+import { AnalysisReport, AgentContract, ChangedMcpServerDetail, Finding } from "./types";
 
 type TreeNode = GroupItem | FindingsItem;
 
@@ -538,6 +538,10 @@ function publishDiagnostics(
 
   const grouped = new Map<string, vscode.Diagnostic[]>();
   for (const finding of report.findings) {
+    if (!shouldPublishFindingDiagnostic(report, finding)) {
+      continue;
+    }
+
     if (!finding.location || finding.location.includes(",")) {
       continue;
     }
@@ -557,9 +561,58 @@ function publishDiagnostics(
     grouped.set(uri.toString(), current);
   }
 
+  for (const detail of report.changedMcpServers) {
+    if (detail.status === "removed") {
+      continue;
+    }
+
+    const uri = vscode.Uri.joinPath(folder.uri, ...detail.path.split("/"));
+    const document = vscode.workspace.textDocuments.find((item) => item.uri.toString() === uri.toString());
+    if (!document) {
+      continue;
+    }
+
+    const range = rangeFromJsonPath(document, ["servers", detail.serverName]);
+    if (!range) {
+      continue;
+    }
+
+    const diagnostic = new vscode.Diagnostic(
+      range,
+      `Changed MCP server: ${detail.serverName} was ${detail.status} in the current branch`,
+      vscode.DiagnosticSeverity.Information
+    );
+    diagnostic.source = "Agent Contracts";
+    diagnostic.code = `changed-mcp-server-${detail.serverName}`;
+
+    const current = grouped.get(uri.toString()) ?? [];
+    current.push(diagnostic);
+    grouped.set(uri.toString(), current);
+  }
+
   for (const [uriString, items] of grouped) {
     diagnostics.set(vscode.Uri.parse(uriString), items);
   }
+}
+
+function shouldPublishFindingDiagnostic(report: AnalysisReport, finding: Finding): boolean {
+  if (report.scope !== "changes" || finding.source !== "mcp" || !finding.location) {
+    return true;
+  }
+
+  const changedServers = report.changedMcpServers.filter((detail) => detail.path === finding.location);
+  if (changedServers.length === 0) {
+    return true;
+  }
+
+  const serverName = finding.jsonPath?.[0] === "servers" && typeof finding.jsonPath[1] === "string"
+    ? finding.jsonPath[1]
+    : undefined;
+  if (!serverName) {
+    return true;
+  }
+
+  return changedServers.some((detail) => detail.serverName === serverName);
 }
 
 function toDiagnosticSeverity(finding: Finding): vscode.DiagnosticSeverity {
@@ -605,6 +658,17 @@ function toDiagnosticRange(finding: Finding, uri: vscode.Uri): vscode.Range {
   const range = finding.range ?? findJsonPathRange(document.getText(), finding.jsonPath);
   if (!range) {
     return new vscode.Range(0, 0, 0, 1);
+  }
+
+  const start = document.positionAt(range.offset);
+  const end = document.positionAt(range.offset + Math.max(range.length, 1));
+  return new vscode.Range(start, end);
+}
+
+function rangeFromJsonPath(document: vscode.TextDocument, jsonPath: Array<string | number>): vscode.Range | undefined {
+  const range = findJsonPathRange(document.getText(), jsonPath);
+  if (!range) {
+    return undefined;
   }
 
   const start = document.positionAt(range.offset);

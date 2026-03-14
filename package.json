@@ -2,7 +2,7 @@
   "name": "agent-contracts",
   "displayName": "Agent Contracts",
   "description": "Workspace trust contracts for MCP and AI-assisted development in VS Code.",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "publisher": "padjon",
   "icon": "resources/icon.png",
   "sponsor": {

@@ -104,6 +104,7 @@ export async function run(): Promise<void> {
     await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(updated, "utf8"));
 
     await vscode.commands.executeCommand("agentContracts.analyzeChangedFiles");
+    await waitForDiagnostics(mcpUri);
     await vscode.commands.executeCommand("agentContracts.openReport");
 
     const reportDocument = vscode.window.activeTextEditor?.document;
@@ -114,6 +115,10 @@ export async function run(): Promise<void> {
     assert.match(reportDocument?.getText() ?? "", /Changed MCP server review/);
     assert.match(reportDocument?.getText() ?? "", /\.vscode\/mcp\.json#added \| added \|/);
     assert.match(reportDocument?.getText() ?? "", /\.vscode\/mcp\.json#forbidden \| modified \|/);
+
+    const changedDiagnostics = vscode.languages.getDiagnostics(mcpUri);
+    assert.ok(changedDiagnostics.some((item) => item.message.includes("Changed MCP server: added was added")));
+    assert.ok(changedDiagnostics.some((item) => item.message.includes("Changed MCP server: forbidden was modified")));
 
     await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(original, "utf8"));
     await execFileAsync("git", ["checkout", "--", ".vscode/mcp.json"], { cwd: workspaceFolder.uri.fsPath });

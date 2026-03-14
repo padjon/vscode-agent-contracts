@@ -16,6 +16,7 @@ It keeps a small policy file in the repo and uses it to answer practical questio
 - analyzes MCP config files in the workspace
 - prioritizes changed files when you want a branch-focused review
 - highlights exactly which MCP server entries changed in a branch scan
+- adds inline editor diagnostics for changed MCP server blocks during branch scans
 - checks whether sensitive files are covered by protected path rules
 - compares your contract with the verification scripts your repo already exposes
 - can add missing verification commands to the contract
@@ -156,6 +157,7 @@ The Activity Bar view shows:
 - top findings from the latest scan
 - a changed review queue during branch-focused scans
 - a changed MCP server queue for branch-focused MCP edits
+- inline diagnostics on changed MCP server blocks while reviewing branch changes
 
 ## Diagnostics and autofixes
 
