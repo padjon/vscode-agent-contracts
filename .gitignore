@@ -2,3 +2,5 @@ node_modules
 out
 *.vsix
 .DS_Store
+test/**/*.js
+test/**/*.js.map
