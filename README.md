@@ -21,6 +21,7 @@ It keeps a small policy file in the repo and uses it to answer practical questio
 - can add current sensitive files to the contract as protected paths
 - adds line-precise diagnostics for MCP findings when the file is open
 - offers quick fixes for safe MCP cleanup cases
+- can apply safe fixes across the current scan in one pass
 - generates a readable report inside VS Code
 - shows findings and shortcuts in a dedicated Activity Bar view
 
@@ -59,8 +60,11 @@ If those files are not covered by `protectedPaths`, it reports them.
 The extension scans workspace MCP configs and flags patterns such as:
 
 - shell wrappers like `bash -c`
+- shell chains like `curl ... | sh`
 - package runners like `npx`, `pnpm`, or `docker`
+- unpinned runner targets
 - insecure `http://` MCP URLs
+- remote MCP endpoints outside the local machine
 - inline secrets in environment variables
 - MCP servers blocked by the contract but still configured
 
@@ -84,7 +88,8 @@ If you want a faster setup, run `Agent Contracts: Apply Contract Preset` and sta
 2. Run a workspace scan to establish a baseline.
 3. Use changed-file scans while reviewing a branch and start with the review queue at the top of the report.
 4. Fix MCP issues directly from diagnostics when a safe quick fix is available.
-5. Keep the contract in version control so the repo explains its own trust boundaries.
+5. Apply safe fixes from the sidebar when the scan offers a batch cleanup.
+6. Keep the contract in version control so the repo explains its own trust boundaries.
 
 ## Example contract
 
@@ -130,6 +135,7 @@ Examples of things the extension will report:
 - `Agent Contracts: Add Recommended Verification`
 - `Agent Contracts: Protect Sensitive Paths`
 - `Agent Contracts: Apply Contract Preset`
+- `Agent Contracts: Apply Safe Fixes`
 
 ## View
 
@@ -151,6 +157,7 @@ The first autofix commands currently supported are:
 - add inferred verification commands into `requiredVerification`
 - add currently detected sensitive files into `protectedPaths`
 - merge starter policies for Node, Python, and Terraform repos
+- apply all safe fixes from the current scan in one pass
 
 For MCP config files, the current quick fixes cover:
 

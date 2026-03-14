@@ -96,6 +96,7 @@ class FindingsProvider implements vscode.TreeDataProvider<TreeNode> {
         title: "Analyze Changed Files"
       })
     ];
+    const fixableFindings = getFixableFindings(report);
 
     if (report.scope === "changes" && report.changedFileDetails.length > 0) {
       const riskyFiles = report.changedFileDetails.filter((detail) => detail.findingCount > 0).length;
@@ -103,6 +104,15 @@ class FindingsProvider implements vscode.TreeDataProvider<TreeNode> {
         new FindingsItem("Changed Review Queue", `${riskyFiles} risky file(s)`, {
           command: "agentContracts.openReport",
           title: "Open Report"
+        })
+      );
+    }
+
+    if (fixableFindings.length > 0) {
+      summaryItems.push(
+        new FindingsItem("Apply Safe Fixes", `${fixableFindings.length} fix(es) available`, {
+          command: "agentContracts.applySafeFixes",
+          title: "Apply Safe Fixes"
         })
       );
     }
@@ -346,6 +356,61 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand("agentContracts.applySafeFixes", async () => {
+      const report = provider.getLatestReport() ?? await analyzeWorkspace();
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      if (!folder) {
+        return;
+      }
+
+      const fixableFindings = getFixableFindings(report);
+      if (fixableFindings.length === 0) {
+        void vscode.window.showInformationMessage("No safe fixes are available in the current scan.");
+        return;
+      }
+
+      const grouped = new Map<string, Finding[]>();
+      for (const finding of fixableFindings) {
+        if (!finding.location) {
+          continue;
+        }
+
+        const current = grouped.get(finding.location) ?? [];
+        current.push(finding);
+        grouped.set(finding.location, current);
+      }
+
+      let updatedFiles = 0;
+      let appliedFixes = 0;
+
+      for (const [location, findings] of grouped) {
+        const uri = vscode.Uri.joinPath(folder.uri, ...location.split("/"));
+        const original = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString("utf8");
+        let updated = original;
+        let fileFixes = 0;
+
+        for (const finding of sortFindingsForBatchFix(findings)) {
+          const next = applyFindingFix(updated, finding);
+          if (next !== updated) {
+            updated = next;
+            fileFixes += 1;
+          }
+        }
+
+        if (updated !== original) {
+          await vscode.workspace.fs.writeFile(uri, Buffer.from(updated, "utf8"));
+          updatedFiles += 1;
+          appliedFixes += fileFixes;
+        }
+      }
+
+      await provider.refresh(true, report.scope);
+      publishDiagnostics(diagnostics, provider.getLatestReport());
+      void vscode.window.showInformationMessage(`Applied ${appliedFixes} safe fix(es) across ${updatedFiles} file(s).`);
+    })
+  );
+
   const autoRefresh = vscode.workspace
     .getConfiguration("agentContracts")
     .get<boolean>("autoRefresh", true);
@@ -436,6 +501,24 @@ function toDiagnosticSeverity(finding: Finding): vscode.DiagnosticSeverity {
 
 function unique(values: string[]): string[] {
   return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+
+function getFixableFindings(report: AnalysisReport): Finding[] {
+  return report.findings.filter((finding) => finding.fix && finding.location);
+}
+
+function sortFindingsForBatchFix(findings: Finding[]): Finding[] {
+  return [...findings].sort((left, right) => {
+    const leftRemove = left.fix?.kind === "remove-property" ? 1 : 0;
+    const rightRemove = right.fix?.kind === "remove-property" ? 1 : 0;
+    if (leftRemove !== rightRemove) {
+      return leftRemove - rightRemove;
+    }
+
+    const leftDepth = left.fix?.path.length ?? 0;
+    const rightDepth = right.fix?.path.length ?? 0;
+    return rightDepth - leftDepth;
+  });
 }
 
 function toDiagnosticRange(finding: Finding, uri: vscode.Uri): vscode.Range {

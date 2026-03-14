@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0
+
+- Added `Apply Safe Fixes` to update contract and MCP files from the current scan in one pass
+- Added deeper MCP checks for dangerous shell chains, unpinned runner targets, and remote endpoints
+
 ## 1.1.0
 
 - Added a changed-file review queue with diff size, file status, and finding counts

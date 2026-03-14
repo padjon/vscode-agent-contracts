@@ -12,6 +12,7 @@ const SECRET_KEY_PATTERN = /(token|secret|password|passwd|api[_-]?key|access[_-]
 const SHELL_WRAPPER_PATTERN = /(^|\/)(bash|sh|zsh|fish|cmd|powershell|pwsh)(\.exe)?$/i;
 const RISKY_RUNNER_PATTERN = /(^|\/)(npx|pnpx|pnpm|yarn|bunx|uvx|pipx|docker)(\.cmd|\.exe)?$/i;
 const HTTP_URL_PATTERN = /^http:\/\//i;
+const DANGEROUS_SHELL_CHAIN_PATTERN = /(\|\s*(sh|bash|zsh|fish|pwsh|powershell)\b|&&|;|\$\(|`|Invoke-WebRequest|iwr\b|curl\b|wget\b)/i;
 
 export function analyzeMcpConfigDocument(
   relativePath: string,
@@ -46,6 +47,7 @@ export function analyzeMcpConfigDocument(
       const commandLine = [command, ...args].filter(Boolean).join(" ").trim();
       const commandPath: JsonPathSegment[] = [...serverPath, "command"];
       const urlPath: JsonPathSegment[] = [...serverPath, "url"];
+      const shellCommand = extractShellCommand(args);
 
       if (contractBlocksServer) {
         findings.push({
@@ -80,6 +82,20 @@ export function analyzeMcpConfigDocument(
         });
       }
 
+      if (shellCommand && DANGEROUS_SHELL_CHAIN_PATTERN.test(shellCommand)) {
+        findings.push({
+          id: `mcp-shell-chain-${relativePath}-${serverName}`,
+          severity: "critical",
+          title: `Server ${serverName} shell command contains chained or downloaded execution`,
+          description: `The shell command for ${serverName} includes a high-risk execution pattern: ${shellCommand}.`,
+          source: "mcp",
+          location: relativePath,
+          jsonPath: [...serverPath, "args"],
+          range: nodeRange(root, [...serverPath, "args"]),
+          recommendation: "Replace chained shell execution with a direct reviewed command and remove downloaded install steps."
+        });
+      }
+
       if (command && RISKY_RUNNER_PATTERN.test(command)) {
         findings.push({
           id: `mcp-runner-${relativePath}-${serverName}`,
@@ -92,6 +108,20 @@ export function analyzeMcpConfigDocument(
           range: nodeRange(root, commandPath),
           recommendation: "Pin exact versions and document why the runner is allowed in the contract."
         });
+
+        if (!hasPinnedRunnerTarget(command, args)) {
+          findings.push({
+            id: `mcp-runner-unpinned-${relativePath}-${serverName}`,
+            severity: "high",
+            title: `Server ${serverName} uses an unpinned package runner target`,
+            description: `${commandLine} does not appear to pin an exact package or image version.`,
+            source: "mcp",
+            location: relativePath,
+            jsonPath: [...serverPath, "args"],
+            range: nodeRange(root, [...serverPath, "args"]),
+            recommendation: "Pin an exact package or image version before trusting the server in shared workspaces."
+          });
+        }
       }
 
       if (url && HTTP_URL_PATTERN.test(url)) {
@@ -111,6 +141,20 @@ export function analyzeMcpConfigDocument(
             title: `Switch ${serverName} URL to HTTPS`
           },
           recommendation: "Use HTTPS or a local transport that does not expose the server over an unsecured network hop."
+        });
+      }
+
+      if (url && isRemoteNetworkUrl(url) && !HTTP_URL_PATTERN.test(url)) {
+        findings.push({
+          id: `mcp-remote-${relativePath}-${serverName}`,
+          severity: "medium",
+          title: `Server ${serverName} connects to a remote MCP endpoint`,
+          description: `The MCP server URL for ${serverName} points to a non-local host: ${url}.`,
+          source: "mcp",
+          location: relativePath,
+          jsonPath: urlPath,
+          range: nodeRange(root, urlPath),
+          recommendation: "Review ownership, authentication, and transport guarantees before trusting remote MCP services."
         });
       }
 
@@ -296,4 +340,102 @@ function nodeRange(root: ReturnType<typeof parseTree>, path: JsonPathSegment[]) 
     offset: node.offset,
     length: node.length
   };
+}
+
+function extractShellCommand(args: string[]): string {
+  const commandFlagIndex = args.findIndex((arg) => /^(-c|-lc|\/c|-Command)$/i.test(arg));
+  if (commandFlagIndex < 0) {
+    return "";
+  }
+
+  return args[commandFlagIndex + 1] ?? "";
+}
+
+function hasPinnedRunnerTarget(command: string, args: string[]): boolean {
+  if (command.endsWith("docker") || command.endsWith("docker.exe")) {
+    const imageArg = findDockerImageArg(args);
+    return imageArg ? /:[^:/@]+$|@sha256:/i.test(imageArg) : false;
+  }
+
+  const target = args.find((arg) => isRunnerTargetArg(arg));
+  if (!target) {
+    return false;
+  }
+
+  return isPinnedPackageSpecifier(target);
+}
+
+function findDockerImageArg(args: string[]): string | undefined {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "run" || arg === "create") {
+      for (let cursor = index + 1; cursor < args.length; cursor += 1) {
+        const candidate = args[cursor];
+        if (!candidate || candidate.startsWith("-")) {
+          continue;
+        }
+
+        return candidate;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function isRunnerTargetArg(value: string): boolean {
+  if (!value || value.startsWith("-")) {
+    return false;
+  }
+
+  return !value.startsWith(".") && !value.startsWith("/") && !value.includes("=");
+}
+
+function isPinnedPackageSpecifier(value: string): boolean {
+  if (/^https?:\/\//i.test(value)) {
+    return false;
+  }
+
+  if (/^@[^/]+\/[^@]+@[^/]+$/i.test(value)) {
+    return true;
+  }
+
+  if (/^[^@/][^@]*@[^/]+$/i.test(value)) {
+    return true;
+  }
+
+  return false;
+}
+
+function isRemoteNetworkUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    if (!/^https?:$/i.test(url.protocol)) {
+      return false;
+    }
+
+    return !isLocalHost(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isLocalHost(hostname: string): boolean {
+  const lower = hostname.toLowerCase();
+  if (
+    lower === "localhost" ||
+    lower === "127.0.0.1" ||
+    lower === "0.0.0.0" ||
+    lower === "::1" ||
+    lower.endsWith(".local")
+  ) {
+    return true;
+  }
+
+  if (/^10\./.test(lower) || /^192\.168\./.test(lower)) {
+    return true;
+  }
+
+  const private172 = /^172\.(1[6-9]|2\d|3[0-1])\./.test(lower);
+  return private172;
 }

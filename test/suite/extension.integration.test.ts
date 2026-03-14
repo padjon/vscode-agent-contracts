@@ -51,6 +51,35 @@ export async function run(): Promise<void> {
     assert.ok(titles.some((title) => title.includes("HTTPS") || title.includes("Replace")));
   });
 
+  await runStep("applySafeFixes updates MCP and contract files in one pass", async () => {
+    const originalContract = Buffer.from(await vscode.workspace.fs.readFile(contractUri)).toString("utf8");
+    const originalMcp = Buffer.from(await vscode.workspace.fs.readFile(mcpUri)).toString("utf8");
+    const contractFixture = {
+      protectedPaths: [".github/workflows/**"],
+      requiredVerification: [],
+      blockedCommands: ["git push --force"],
+      blockedMcpServers: ["forbidden"],
+      notes: "Fixture contract"
+    };
+    await vscode.workspace.fs.writeFile(
+      contractUri,
+      Buffer.from(`${JSON.stringify(contractFixture, null, 2)}\n`, "utf8")
+    );
+
+    await vscode.commands.executeCommand("agentContracts.analyzeWorkspace");
+    await vscode.commands.executeCommand("agentContracts.applySafeFixes");
+
+    const updatedContract = Buffer.from(await vscode.workspace.fs.readFile(contractUri)).toString("utf8");
+    const updatedMcp = Buffer.from(await vscode.workspace.fs.readFile(mcpUri)).toString("utf8");
+
+    assert.match(updatedContract, /npm run lint/);
+    assert.match(updatedContract, /secrets\.prod\.json/);
+    assert.doesNotMatch(updatedMcp, /forbidden/);
+
+    await vscode.workspace.fs.writeFile(contractUri, Buffer.from(originalContract, "utf8"));
+    await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(originalMcp, "utf8"));
+  });
+
   await runStep("analyzeChangedFiles reports change scope after a file edit", async () => {
     const original = Buffer.from(await vscode.workspace.fs.readFile(mcpUri)).toString("utf8");
     const updated = original.replace("http://localhost:3456", "http://localhost:4567");
