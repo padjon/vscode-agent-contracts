@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.7
+
+- Reset repository versioning to the `1.0.x` line for a more conservative stable release cadence
+- Future releases should prefer patch and minor increments unless the product meaningfully changes shape
+
 ## 1.7.1
 
 - Added homepage and issue tracker metadata for a cleaner stable support surface on GitHub and the marketplace
