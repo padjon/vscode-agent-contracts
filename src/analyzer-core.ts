@@ -1,7 +1,14 @@
 import { findNodeAtLocation, parse, parseTree } from "jsonc-parser";
 import minimatch = require("minimatch");
 
-import { AgentContract, ChangedMcpServerDetail, Finding, JsonPathSegment, Severity } from "./types";
+import {
+  AgentContract,
+  ChangedMcpServerDetail,
+  Finding,
+  JsonPathSegment,
+  Severity,
+  SeverityOverrideRule
+} from "./types";
 
 type McpConfig = {
   servers?: Record<string, Record<string, unknown>>;
@@ -419,6 +426,30 @@ export function calculateTrustScore(findings: Finding[]): number {
   return Math.max(0, 100 - penalty);
 }
 
+export function applySeverityOverrides(findings: Finding[], contract: AgentContract | undefined): Finding[] {
+  const rules = contract?.severityOverrides ?? [];
+  if (rules.length === 0) {
+    return findings;
+  }
+
+  return findings.map((finding) => {
+    const rule = findMatchingSeverityRule(finding, rules);
+    if (!rule || rule.severity === finding.severity) {
+      return finding;
+    }
+
+    return {
+      ...finding,
+      defaultSeverity: finding.defaultSeverity ?? finding.severity,
+      severity: rule.severity,
+      severityOverride: {
+        match: rule.match,
+        note: rule.note
+      }
+    };
+  });
+}
+
 function stringValue(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -551,6 +582,19 @@ function matchesAllowPattern(value: string | undefined, patterns: string[] | und
   }
 
   return patterns.some((pattern) => minimatch(value, pattern, { nocase: true }));
+}
+
+function findMatchingSeverityRule(
+  finding: Finding,
+  rules: SeverityOverrideRule[]
+): SeverityOverrideRule | undefined {
+  return rules.find((rule) => matchesSeverityOverride(finding.id, rule.match));
+}
+
+function matchesSeverityOverride(value: string, pattern: string): boolean {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`^${escaped.replace(/\*/g, ".*").replace(/\?/g, ".")}$`, "i");
+  return regex.test(value);
 }
 
 function parseServers(raw: string): Map<string, string> {

@@ -16,5 +16,8 @@
     "curl | sh"
   ],
   "blockedMcpServers": [],
+  "allowedMcpHosts": [],
+  "allowedMcpRunnerTargets": [],
+  "severityOverrides": [],
   "notes": "Starter policy for Python repositories."
 }

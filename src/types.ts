@@ -1,6 +1,12 @@
 export type Severity = "critical" | "high" | "medium" | "low";
 export type JsonPathSegment = string | number;
 
+export interface SeverityOverrideRule {
+  match: string;
+  severity: Severity;
+  note?: string;
+}
+
 export interface FindingFix {
   kind: "set-value" | "remove-property" | "append-unique";
   path: JsonPathSegment[];
@@ -22,6 +28,7 @@ export interface AgentContract {
   blockedMcpServers: string[];
   allowedMcpHosts: string[];
   allowedMcpRunnerTargets: string[];
+  severityOverrides: SeverityOverrideRule[];
   notes?: string;
 }
 
@@ -46,6 +53,7 @@ export interface ChangedMcpServerDetail {
 export interface Finding {
   id: string;
   severity: Severity;
+  defaultSeverity?: Severity;
   title: string;
   description: string;
   source: string;
@@ -54,6 +62,10 @@ export interface Finding {
   jsonPath?: JsonPathSegment[];
   fix?: FindingFix;
   recommendation?: string;
+  severityOverride?: {
+    match: string;
+    note?: string;
+  };
 }
 
 export interface AnalysisReport {
@@ -72,5 +84,7 @@ export interface AnalysisReport {
   observedMcpHosts: string[];
   observedMcpRunnerTargets: string[];
   recommendedVerification: string[];
+  severityOverridesConfigured: number;
+  severityOverridesApplied: number;
   summary: string;
 }

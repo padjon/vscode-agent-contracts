@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  applySeverityOverrides,
   analyzeMcpConfigDocument,
   calculateTrustScore,
   collectMcpPolicySignalsDocument,
@@ -18,6 +19,7 @@ const contract: AgentContract = {
   blockedMcpServers: ["forbidden"],
   allowedMcpHosts: [],
   allowedMcpRunnerTargets: [],
+  severityOverrides: [],
   notes: ""
 };
 
@@ -102,7 +104,8 @@ test("analyzeMcpConfigDocument respects allowlisted MCP hosts and runner targets
     {
       ...contract,
       allowedMcpHosts: ["mcp.example.com"],
-      allowedMcpRunnerTargets: ["ghcr.io/example/github-mcp:1.2.3"]
+      allowedMcpRunnerTargets: ["ghcr.io/example/github-mcp:1.2.3"],
+      severityOverrides: []
     }
   );
 
@@ -198,4 +201,37 @@ test("calculateTrustScore applies severity weights", () => {
   ]);
 
   assert.equal(score, 60);
+});
+
+test("applySeverityOverrides raises or lowers matching findings by contract rule", () => {
+  const findings: Finding[] = [
+    {
+      id: "mcp-remote-.vscode/mcp.json-review",
+      severity: "medium",
+      title: "Remote MCP host requires approval",
+      description: "",
+      source: "mcp"
+    },
+    {
+      id: "missing-mcp-config",
+      severity: "low",
+      title: "No MCP config found",
+      description: "",
+      source: "mcp"
+    }
+  ];
+
+  const tuned = applySeverityOverrides(findings, {
+    ...contract,
+    severityOverrides: [
+      { match: "mcp-remote-*", severity: "critical", note: "Remote MCP is a release blocker here." },
+      { match: "missing-mcp-config", severity: "medium" }
+    ]
+  });
+
+  assert.equal(tuned[0]?.severity, "critical");
+  assert.equal(tuned[0]?.defaultSeverity, "medium");
+  assert.equal(tuned[0]?.severityOverride?.match, "mcp-remote-*");
+  assert.equal(tuned[1]?.severity, "medium");
+  assert.equal(calculateTrustScore(tuned), 60);
 });

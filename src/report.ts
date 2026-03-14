@@ -20,6 +20,8 @@ export function buildMarkdownReport(report: AnalysisReport): string {
 - MCP configs analyzed: ${report.mcpConfigs.length}
 - Sensitive files matched: ${report.sensitiveFiles.length}
 - Changed files considered: ${report.changedFiles.length}
+- Severity policy rules: ${report.severityOverridesConfigured}
+- Severity overrides applied: ${report.severityOverridesApplied}
 
 ## Summary
 
@@ -76,7 +78,10 @@ ${formatChangedMcpServers(report.changedMcpServers)}
 function formatFinding(finding: Finding): string {
   const location = finding.location ? ` (${finding.location})` : "";
   const recommendation = finding.recommendation ? ` Recommendation: ${finding.recommendation}` : "";
-  return `- [${SEVERITY_EMOJI[finding.severity]}] ${finding.title}${location}. ${finding.description}${recommendation}`;
+  const override = finding.severityOverride
+    ? ` Severity policy: ${finding.severityOverride.match} changed ${SEVERITY_EMOJI[finding.defaultSeverity ?? finding.severity]} to ${SEVERITY_EMOJI[finding.severity]}${finding.severityOverride.note ? ` (${finding.severityOverride.note})` : ""}.`
+    : "";
+  return `- [${SEVERITY_EMOJI[finding.severity]}] ${finding.title}${location}. ${finding.description}${override}${recommendation}`;
 }
 
 function formatList(items: string[]): string {

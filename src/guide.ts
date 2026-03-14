@@ -50,6 +50,12 @@ The extension scans workspace MCP configs and looks for patterns that are easy t
 - inline secrets in environment variables
 - MCP servers blocked by the contract but still configured
 
+### 5. Severity policy
+
+If a repository wants stricter or softer handling for specific finding classes, the contract can define
+\`severityOverrides\` rules. Those rules match finding IDs such as \`mcp-remote-*\` or
+\`missing-recommended-verification\` and change the reported severity before the trust score is calculated.
+
 ## Trust score
 
 The trust score starts at 100 and subtracts weighted penalties:

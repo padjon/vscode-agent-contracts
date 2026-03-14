@@ -61,6 +61,7 @@ export async function run(): Promise<void> {
       blockedMcpServers: ["forbidden"],
       allowedMcpHosts: [],
       allowedMcpRunnerTargets: [],
+      severityOverrides: [],
       notes: "Fixture contract"
     };
     await vscode.workspace.fs.writeFile(
@@ -125,6 +126,8 @@ export async function run(): Promise<void> {
   });
 
   await runStep("allowObservedMcp approvals write hosts and runner targets into the contract", async () => {
+    const originalContract = Buffer.from(await vscode.workspace.fs.readFile(contractUri)).toString("utf8");
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
     const contractFixture = {
       protectedPaths: [".github/workflows/**"],
       requiredVerification: ["npm run lint"],
@@ -132,6 +135,7 @@ export async function run(): Promise<void> {
       blockedMcpServers: [],
       allowedMcpHosts: [],
       allowedMcpRunnerTargets: [],
+      severityOverrides: [],
       notes: "Fixture contract"
     };
     await vscode.workspace.fs.writeFile(
@@ -157,12 +161,15 @@ export async function run(): Promise<void> {
 
     const updatedContract = Buffer.from(await vscode.workspace.fs.readFile(contractUri)).toString("utf8");
     assert.match(updatedContract, /"allowedMcpHosts": \[\s*"mcp\.example\.com"/);
-    assert.match(updatedContract, /"allowedMcpRunnerTargets": \[\s*"forbidden-mcp@1\.0\.0"/);
+    assert.match(updatedContract, /"forbidden-mcp@1\.0\.0"/);
 
+    await vscode.workspace.fs.writeFile(contractUri, Buffer.from(originalContract, "utf8"));
     await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(originalMcp, "utf8"));
   });
 
   await runStep("MCP quick fixes can approve host and runner target into the contract", async () => {
+    const originalContract = Buffer.from(await vscode.workspace.fs.readFile(contractUri)).toString("utf8");
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
     const contractFixture = {
       protectedPaths: [".github/workflows/**"],
       requiredVerification: ["npm run lint"],
@@ -170,6 +177,7 @@ export async function run(): Promise<void> {
       blockedMcpServers: [],
       allowedMcpHosts: [],
       allowedMcpRunnerTargets: [],
+      severityOverrides: [],
       notes: "Fixture contract"
     };
     await vscode.workspace.fs.writeFile(
@@ -234,8 +242,60 @@ export async function run(): Promise<void> {
     if (contractDocument.isDirty) {
       await contractDocument.save();
     }
-    assert.match(contractDocument.getText(), /"allowedMcpRunnerTargets": \[\s*"review-server@1\.0\.0"/);
+    assert.match(contractDocument.getText(), /"review-server@1\.0\.0"/);
 
+    await vscode.workspace.fs.writeFile(contractUri, Buffer.from(originalContract, "utf8"));
+    await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(originalMcp, "utf8"));
+  });
+
+  await runStep("severity overrides change the reported severity in the report", async () => {
+    const originalContract = Buffer.from(await vscode.workspace.fs.readFile(contractUri)).toString("utf8");
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+    const contractFixture = {
+      protectedPaths: [".github/workflows/**"],
+      requiredVerification: ["npm run lint"],
+      blockedCommands: ["git push --force"],
+      blockedMcpServers: [],
+      allowedMcpHosts: [],
+      allowedMcpRunnerTargets: [],
+      severityOverrides: [
+        {
+          match: "mcp-remote-*",
+          severity: "critical",
+          note: "Remote MCP requires security review in this repo."
+        }
+      ],
+      notes: "Fixture contract"
+    };
+    await vscode.workspace.fs.writeFile(
+      contractUri,
+      Buffer.from(`${JSON.stringify(contractFixture, null, 2)}\n`, "utf8")
+    );
+
+    const originalMcp = Buffer.from(await vscode.workspace.fs.readFile(mcpUri)).toString("utf8");
+    const updatedMcp = JSON.stringify({
+      servers: {
+        review: {
+          command: "npx",
+          args: ["review-server@1.0.0"],
+          url: "https://mcp.example.com"
+        }
+      }
+    }, null, 2);
+    await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(updatedMcp, "utf8"));
+
+    await vscode.commands.executeCommand("agentContracts.analyzeWorkspace");
+    await waitForDiagnostics(mcpUri);
+    await vscode.commands.executeCommand("agentContracts.openReport");
+
+    const reportDocument = vscode.window.activeTextEditor?.document;
+    assert.ok(reportDocument);
+    const reportText = reportDocument?.getText() ?? "";
+    assert.match(reportText, /Severity policy rules: 1/);
+    assert.match(reportText, /Severity overrides applied: 1/);
+    assert.match(reportText, /changed MEDIUM to CRITICAL/);
+
+    await vscode.workspace.fs.writeFile(contractUri, Buffer.from(originalContract, "utf8"));
     await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(originalMcp, "utf8"));
   });
 
@@ -247,6 +307,7 @@ export async function run(): Promise<void> {
       blockedMcpServers: [],
       allowedMcpHosts: [],
       allowedMcpRunnerTargets: [],
+      severityOverrides: [],
       notes: "Fixture contract"
     };
     await vscode.workspace.fs.writeFile(

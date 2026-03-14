@@ -1,7 +1,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { AgentContract } from "./types";
+import { AgentContract, SeverityOverrideRule } from "./types";
 
 const textDecoder = new TextDecoder();
 const textEncoder = new TextEncoder();
@@ -31,7 +31,8 @@ export function defaultContract(requiredVerification: string[]): AgentContract {
     blockedMcpServers: [],
     allowedMcpHosts: [],
     allowedMcpRunnerTargets: [],
-    notes: "List sensitive paths, required verification steps, blocked MCP servers, and any explicitly approved MCP hosts or runner targets."
+    severityOverrides: [],
+    notes: "List sensitive paths, required verification steps, blocked MCP servers, approved MCP hosts or runner targets, and any severity rules that should be stricter in this repo."
   };
 }
 
@@ -59,6 +60,7 @@ export async function readContract(uri: vscode.Uri): Promise<AgentContract | und
     blockedMcpServers: Array.isArray(parsed.blockedMcpServers) ? parsed.blockedMcpServers : [],
     allowedMcpHosts: Array.isArray(parsed.allowedMcpHosts) ? parsed.allowedMcpHosts : [],
     allowedMcpRunnerTargets: Array.isArray(parsed.allowedMcpRunnerTargets) ? parsed.allowedMcpRunnerTargets : [],
+    severityOverrides: normalizeSeverityOverrides(parsed.severityOverrides),
     notes: typeof parsed.notes === "string" ? parsed.notes : undefined
   };
 }
@@ -113,4 +115,31 @@ export function contractUriForFolder(folder: vscode.WorkspaceFolder): vscode.Uri
 
   const cleanPath = fileName.replace(/^\/+/, "");
   return vscode.Uri.joinPath(folder.uri, ...cleanPath.split(path.posix.sep));
+}
+
+function normalizeSeverityOverrides(value: unknown): SeverityOverrideRule[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return [];
+    }
+
+    const candidate = entry as Partial<SeverityOverrideRule>;
+    if (typeof candidate.match !== "string") {
+      return [];
+    }
+
+    if (candidate.severity !== "critical" && candidate.severity !== "high" && candidate.severity !== "medium" && candidate.severity !== "low") {
+      return [];
+    }
+
+    return [{
+      match: candidate.match,
+      severity: candidate.severity,
+      note: typeof candidate.note === "string" ? candidate.note : undefined
+    }];
+  });
 }

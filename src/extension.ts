@@ -127,6 +127,19 @@ class FindingsProvider implements vscode.TreeDataProvider<TreeNode> {
       );
     }
 
+    if (report.severityOverridesConfigured > 0) {
+      summaryItems.push(
+        new FindingsItem(
+          "Severity Policy",
+          `${report.severityOverridesApplied}/${report.severityOverridesConfigured} rule(s) applied`,
+          {
+            command: "agentContracts.openReport",
+            title: "Open Report"
+          }
+        )
+      );
+    }
+
     if (report.observedMcpHosts.length > 0) {
       summaryItems.push(
         new FindingsItem("Allow Observed MCP Hosts", `${report.observedMcpHosts.length} host(s)`, {
@@ -216,8 +229,14 @@ function buildFindingGroups(findings: Finding[]): GroupItem[] {
 }
 
 function toFindingItem(finding: Finding): FindingsItem {
-  const item = new FindingsItem(finding.title, finding.severity.toUpperCase());
-  item.tooltip = `${finding.description}${finding.recommendation ? `\n\nRecommendation: ${finding.recommendation}` : ""}`;
+  const description = finding.defaultSeverity && finding.defaultSeverity !== finding.severity
+    ? `${finding.severity.toUpperCase()} from ${finding.defaultSeverity.toUpperCase()}`
+    : finding.severity.toUpperCase();
+  const item = new FindingsItem(finding.title, description);
+  const severityPolicy = finding.severityOverride
+    ? `\n\nSeverity policy: ${finding.severityOverride.match} -> ${finding.severity.toUpperCase()}${finding.severityOverride.note ? ` (${finding.severityOverride.note})` : ""}`
+    : "";
+  item.tooltip = `${finding.description}${severityPolicy}${finding.recommendation ? `\n\nRecommendation: ${finding.recommendation}` : ""}`;
   item.contextValue = finding.severity;
 
   switch (finding.severity) {
@@ -827,8 +846,26 @@ function mergeContracts(base: AgentContract, incoming: AgentContract): AgentCont
     blockedMcpServers: unique([...base.blockedMcpServers, ...incoming.blockedMcpServers]),
     allowedMcpHosts: unique([...base.allowedMcpHosts, ...incoming.allowedMcpHosts]),
     allowedMcpRunnerTargets: unique([...base.allowedMcpRunnerTargets, ...incoming.allowedMcpRunnerTargets]),
+    severityOverrides: mergeSeverityOverrides(base, incoming),
     notes: base.notes ?? incoming.notes
   };
+}
+
+function mergeSeverityOverrides(base: AgentContract, incoming: AgentContract): AgentContract["severityOverrides"] {
+  const seen = new Set<string>();
+  const merged: AgentContract["severityOverrides"] = [];
+
+  for (const rule of [...base.severityOverrides, ...incoming.severityOverrides]) {
+    const key = JSON.stringify(rule);
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    merged.push(rule);
+  }
+
+  return merged;
 }
 
 function findJsonPathRange(

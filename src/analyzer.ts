@@ -7,6 +7,7 @@ import {
   readContract
 } from "./contracts";
 import {
+  applySeverityOverrides,
   analyzeMcpConfigDocument,
   calculateTrustScore,
   collectMcpPolicySignalsDocument,
@@ -60,6 +61,8 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
       observedMcpHosts: [],
       observedMcpRunnerTargets: [],
       recommendedVerification: [],
+      severityOverridesConfigured: 0,
+      severityOverridesApplied: 0,
       summary: "No workspace folder is open."
     };
   }
@@ -96,7 +99,7 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
     : allMcpConfigs;
   const observedMcpHosts = new Set<string>();
   const observedMcpRunnerTargets = new Set<string>();
-  const changedMcpServers: ChangedMcpServerDetail[] = [];
+  const changedMcpServerDiffs: Array<Omit<ChangedMcpServerDetail, "findingCount" | "highestSeverity">> = [];
   if (mcpConfigs.length === 0) {
     findings.push({
       id: "missing-mcp-config",
@@ -125,10 +128,9 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
     if (scope === "changes") {
       const relativePath = toRelative(folder, uri);
       const previousRaw = await readFileAtHead(folder, relativePath);
-      changedMcpServers.push(...buildChangedMcpServerDetails(
-        diffMcpServersDocument(relativePath, textDecoder.decode(await vscode.workspace.fs.readFile(uri)), previousRaw),
-        findings
-      ));
+      changedMcpServerDiffs.push(
+        ...diffMcpServersDocument(relativePath, textDecoder.decode(await vscode.workspace.fs.readFile(uri)), previousRaw)
+      );
     }
   }
 
@@ -144,17 +146,21 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
     });
   }
 
-  const trustScore = calculateTrustScore(findings);
-  const enrichedChangedFileDetails = buildChangedFileDetails(changedFileDetails, findings);
-  const enrichedChangedMcpServers = sortChangedMcpServers(changedMcpServers);
+  const tunedFindings = applySeverityOverrides(findings, contract);
+  const severityOverridesConfigured = contract?.severityOverrides.length ?? 0;
+  const severityOverridesApplied = tunedFindings.filter((finding) => finding.severityOverride).length;
+  const trustScore = calculateTrustScore(tunedFindings);
+  const enrichedChangedFileDetails = buildChangedFileDetails(changedFileDetails, tunedFindings);
+  const enrichedChangedMcpServers = sortChangedMcpServers(buildChangedMcpServerDetails(changedMcpServerDiffs, tunedFindings));
   const summary = buildSummary(
-    findings,
+    tunedFindings,
     trustScore,
     contract !== undefined,
     mcpConfigs.length,
     scope,
     enrichedChangedFileDetails,
-    enrichedChangedMcpServers
+    enrichedChangedMcpServers,
+    severityOverridesApplied
   );
 
   return {
@@ -164,7 +170,7 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
     contractPath,
     contractExists: contract !== undefined,
     trustScore,
-    findings: sortFindings(findings),
+    findings: sortFindings(tunedFindings),
     mcpConfigs: mcpConfigs.map((uri) => toRelative(folder, uri)),
     sensitiveFiles,
     changedFiles,
@@ -173,6 +179,8 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
     observedMcpHosts: [...observedMcpHosts].sort((left, right) => left.localeCompare(right)),
     observedMcpRunnerTargets: [...observedMcpRunnerTargets].sort((left, right) => left.localeCompare(right)),
     recommendedVerification,
+    severityOverridesConfigured,
+    severityOverridesApplied,
     summary
   };
 }
@@ -263,17 +271,21 @@ function buildSummary(
   mcpConfigCount: number,
   scope: "workspace" | "changes",
   changedFileDetails: ChangedFileDetail[],
-  changedMcpServers: ChangedMcpServerDetail[]
+  changedMcpServers: ChangedMcpServerDetail[],
+  severityOverridesApplied: number
 ): string {
   const critical = findings.filter((finding) => finding.severity === "critical").length;
   const high = findings.filter((finding) => finding.severity === "high").length;
 
   const contractState = hasContract ? "Contract present." : "Contract missing.";
   const mcpState = mcpConfigCount > 0 ? `${mcpConfigCount} MCP config file(s) analyzed.` : "No MCP configs analyzed.";
+  const severityState = severityOverridesApplied > 0
+    ? ` ${severityOverridesApplied} severity override(s) applied.`
+    : "";
   const changedState = scope === "changes"
     ? buildChangedScopeSummary(changedFileDetails, changedMcpServers)
     : "";
-  return `Trust score ${trustScore}/100. ${critical} critical and ${high} high severity finding(s). ${contractState} ${mcpState}${changedState}`;
+  return `Trust score ${trustScore}/100. ${critical} critical and ${high} high severity finding(s). ${contractState} ${mcpState}${severityState}${changedState}`;
 }
 
 function sortFindings(findings: Finding[]): Finding[] {

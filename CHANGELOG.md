@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.0
+
+- Added contract-driven `severityOverrides` so repositories can raise or lower matching finding classes
+- Surfaced configured and applied severity policy in the sidebar, report, guide, and starter contracts
+
 ## 1.6.1
 
 - Added README feedback links for GitHub issues and product requests by email

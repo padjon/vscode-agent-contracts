@@ -17,5 +17,8 @@
     "curl | sh"
   ],
   "blockedMcpServers": [],
+  "allowedMcpHosts": [],
+  "allowedMcpRunnerTargets": [],
+  "severityOverrides": [],
   "notes": "Starter policy for Terraform and infrastructure repositories."
 }

@@ -29,6 +29,7 @@ It keeps a small policy file in the repo and uses it to answer practical questio
 - can apply safe fixes across the current scan in one pass
 - can approve reviewed MCP hosts and runner targets in the contract
 - can approve MCP hosts and runner targets directly from the editor warning
+- can tune finding severity from the repo contract for stricter or softer local policy
 - generates a readable report inside VS Code
 - shows findings and shortcuts in a dedicated Activity Bar view
 
@@ -76,6 +77,10 @@ The extension scans workspace MCP configs and flags patterns such as:
 - inline secrets in environment variables
 - MCP servers blocked by the contract but still configured
 
+The contract can also tune the severity of specific finding classes. For example, a repository can raise
+all remote MCP findings from `medium` to `critical`, or soften low-priority noise that the team has
+already accepted.
+
 ## Getting started
 
 1. Open a repository in VS Code.
@@ -122,7 +127,14 @@ The extension stores its policy in `.agent-contract.json`.
   ],
   "blockedMcpServers": [],
   "allowedMcpHosts": [],
-  "allowedMcpRunnerTargets": []
+  "allowedMcpRunnerTargets": [],
+  "severityOverrides": [
+    {
+      "match": "mcp-remote-*",
+      "severity": "high",
+      "note": "Remote MCP connections require explicit security review in this repo."
+    }
+  ]
 }
 ```
 
@@ -175,6 +187,7 @@ The first autofix commands currently supported are:
 - apply all safe fixes from the current scan in one pass
 - write reviewed MCP hosts and runner targets into the contract
 - approve reviewed MCP hosts and runner targets from the exact MCP finding in the editor
+- raise or lower matching finding classes with `severityOverrides`
 
 For MCP config files, the current quick fixes cover:
 

@@ -19,5 +19,8 @@
     "curl | sh"
   ],
   "blockedMcpServers": [],
+  "allowedMcpHosts": [],
+  "allowedMcpRunnerTargets": [],
+  "severityOverrides": [],
   "notes": "This repository is the reference implementation for Agent Contracts. Keep packaging and compilation as explicit verification steps."
 }
