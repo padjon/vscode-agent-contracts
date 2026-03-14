@@ -8,10 +8,10 @@
   <text x="92" y="58" fill="#1b4332" font-family="Georgia, serif" font-size="24" font-weight="700">
     Agent Contracts for VS Code
   </text>
-  <text x="124" y="146" fill="#1b4332" font-family="Arial, sans-serif" font-size="42" font-weight="700">
+  <text x="124" y="146" fill="#1b4332" font-family="Arial, sans-serif" font-size="34" font-weight="700">
     1. Define the contract
   </text>
-  <text x="124" y="188" fill="#365344" font-family="Arial, sans-serif" font-size="24">
+  <text x="124" y="186" fill="#365344" font-family="Arial, sans-serif" font-size="20">
     Keep policy in .agent-contract.json
   </text>
   <rect x="124" y="228" width="356" height="322" rx="18" fill="#1f2b26"/>
@@ -42,47 +42,53 @@
   <text x="152" y="562" fill="#9fe3c4" font-family="Courier New, monospace" font-size="20">
     }
   </text>
-  <text x="580" y="146" fill="#1b4332" font-family="Arial, sans-serif" font-size="36" font-weight="700">
+  <text x="580" y="146" fill="#1b4332" font-family="Arial, sans-serif" font-size="30" font-weight="700">
     2. Scan the repo
   </text>
-  <text x="580" y="192" fill="#365344" font-family="Arial, sans-serif" font-size="22">
+  <text x="580" y="188" fill="#365344" font-family="Arial, sans-serif" font-size="18">
     Workspace or changed files
   </text>
-  <text x="580" y="246" fill="#1b4332" font-family="Arial, sans-serif" font-size="22">
+  <text x="580" y="236" fill="#1b4332" font-family="Arial, sans-serif" font-size="18">
     • MCP config heuristics
   </text>
-  <text x="580" y="282" fill="#1b4332" font-family="Arial, sans-serif" font-size="22">
+  <text x="580" y="268" fill="#1b4332" font-family="Arial, sans-serif" font-size="18">
     • Sensitive path coverage
   </text>
-  <text x="580" y="318" fill="#1b4332" font-family="Arial, sans-serif" font-size="22">
+  <text x="580" y="300" fill="#1b4332" font-family="Arial, sans-serif" font-size="18">
     • Verification gaps
   </text>
-  <text x="908" y="146" fill="#1b4332" font-family="Arial, sans-serif" font-size="36" font-weight="700">
+  <text x="908" y="146" fill="#1b4332" font-family="Arial, sans-serif" font-size="30" font-weight="700">
     3. Fix in place
   </text>
-  <text x="908" y="192" fill="#365344" font-family="Arial, sans-serif" font-size="22">
+  <text x="908" y="188" fill="#365344" font-family="Arial, sans-serif" font-size="18">
     Diagnostics and quick fixes
   </text>
-  <text x="908" y="246" fill="#1b4332" font-family="Arial, sans-serif" font-size="22">
+  <text x="908" y="236" fill="#1b4332" font-family="Arial, sans-serif" font-size="18">
     • Switch HTTP to HTTPS
   </text>
-  <text x="908" y="282" fill="#1b4332" font-family="Arial, sans-serif" font-size="22">
+  <text x="908" y="268" fill="#1b4332" font-family="Arial, sans-serif" font-size="18">
     • Remove blocked servers
   </text>
-  <text x="908" y="318" fill="#1b4332" font-family="Arial, sans-serif" font-size="22">
+  <text x="908" y="300" fill="#1b4332" font-family="Arial, sans-serif" font-size="18">
     • Replace inline secrets
   </text>
-  <text x="580" y="430" fill="#1b4332" font-family="Arial, sans-serif" font-size="36" font-weight="700">
+  <text x="580" y="426" fill="#1b4332" font-family="Arial, sans-serif" font-size="30" font-weight="700">
     What shows up in VS Code
   </text>
   <rect x="580" y="466" width="576" height="114" rx="16" fill="#ffffff" stroke="#1b4332" stroke-width="2"/>
-  <text x="610" y="512" fill="#1b4332" font-family="Arial, sans-serif" font-size="28" font-weight="700">
+  <text x="610" y="510" fill="#1b4332" font-family="Arial, sans-serif" font-size="24" font-weight="700">
     Trust Score 42/100
   </text>
-  <text x="610" y="550" fill="#365344" font-family="Arial, sans-serif" font-size="20">
-    CRITICAL  Inline secret in .vscode/mcp.json
+  <text x="610" y="546" fill="#365344" font-family="Arial, sans-serif" font-size="17">
+    CRITICAL  Inline secret in
   </text>
-  <text x="610" y="578" fill="#365344" font-family="Arial, sans-serif" font-size="20">
-    HIGH      Server forbidden uses insecure HTTP
+  <text x="610" y="570" fill="#365344" font-family="Arial, sans-serif" font-size="17">
+    .vscode/mcp.json
+  </text>
+  <text x="860" y="546" fill="#365344" font-family="Arial, sans-serif" font-size="17">
+    HIGH      Server forbidden uses
+  </text>
+  <text x="860" y="570" fill="#365344" font-family="Arial, sans-serif" font-size="17">
+    insecure HTTP
   </text>
 </svg>

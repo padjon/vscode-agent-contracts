@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.6
+
+- Reduced SVG typography and split long labels to prevent panel overlap
+- Regenerated marketplace PNG assets from the corrected SVG sources
+
 ## 0.0.5
 
 - Added extension-host integration tests with a fixture workspace
