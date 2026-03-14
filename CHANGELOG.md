@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.8
+
+- Moved the overview panel down so the title no longer intersects the border
+- Regenerated the overview PNG from the corrected SVG source
+
 ## 0.0.7
 
 - Wrapped the remaining overflowing text in the quality marketplace asset

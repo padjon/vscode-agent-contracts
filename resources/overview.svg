@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" fill="none">
   <rect width="1280" height="720" fill="#f4efe6"/>
-  <rect x="56" y="48" width="1168" height="624" rx="28" fill="#fffaf1" stroke="#1b4332" stroke-width="4"/>
+  <rect x="56" y="72" width="1168" height="600" rx="28" fill="#fffaf1" stroke="#1b4332" stroke-width="4"/>
   <rect x="92" y="92" width="420" height="536" rx="24" fill="#f7f1e4" stroke="#1b4332" stroke-width="3"/>
   <rect x="548" y="92" width="292" height="252" rx="24" fill="#dcefe2" stroke="#1b4332" stroke-width="3"/>
   <rect x="876" y="92" width="312" height="252" rx="24" fill="#fde7d7" stroke="#1b4332" stroke-width="3"/>
   <rect x="548" y="376" width="640" height="252" rx="24" fill="#f5efe6" stroke="#1b4332" stroke-width="3"/>
-  <text x="92" y="58" fill="#1b4332" font-family="Georgia, serif" font-size="24" font-weight="700">
+  <text x="92" y="48" fill="#1b4332" font-family="Georgia, serif" font-size="24" font-weight="700">
     Agent Contracts for VS Code
   </text>
   <text x="124" y="146" fill="#1b4332" font-family="Arial, sans-serif" font-size="34" font-weight="700">
