@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.10
+
+- Added GitHub funding configuration for the repository sponsor button
+- Added marketplace sponsor metadata linking to GitHub Sponsors
+
 ## 0.0.9
 
 - Removed developer-facing sections from the README so the listing stays customer-focused
