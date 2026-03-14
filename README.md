@@ -170,18 +170,3 @@ The trust score is only a prioritization signal. The detailed findings matter mo
 ## Current scope
 
 This version focuses on analysis and shared policy. It does not intercept agent actions or replace CI and code review.
-
-## Development
-
-```bash
-npm install
-npm run compile
-npm test
-```
-
-Press `F5` in VS Code to launch the extension host.
-
-## Research and plan
-
-The trend and positioning analysis that drove this extension lives in [docs/research.md](docs/research.md).
-The execution roadmap and sponsor plan lives in [docs/plan.md](docs/plan.md).

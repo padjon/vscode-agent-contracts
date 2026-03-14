@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.9
+
+- Removed developer-facing sections from the README so the listing stays customer-focused
+
 ## 0.0.8
 
 - Moved the overview panel down so the title no longer intersects the border
