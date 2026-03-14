@@ -184,7 +184,8 @@ async function analyzeMcpConfig(
 ): Promise<{ findings: Finding[]; remoteHosts: string[]; runnerTargets: string[] }> {
   const relativePath = toRelative(folder, uri);
   const raw = textDecoder.decode(await vscode.workspace.fs.readFile(uri));
-  const findings = analyzeMcpConfigDocument(relativePath, raw, contract);
+  const contractPath = toRelative(folder, contractUriForFolder(folder));
+  const findings = analyzeMcpConfigDocument(relativePath, raw, contract, contractPath);
   const signals = collectMcpPolicySignalsDocument(raw);
   return {
     findings,

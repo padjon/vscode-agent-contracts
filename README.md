@@ -28,6 +28,7 @@ It keeps a small policy file in the repo and uses it to answer practical questio
 - offers quick fixes for safe MCP cleanup cases
 - can apply safe fixes across the current scan in one pass
 - can approve reviewed MCP hosts and runner targets in the contract
+- can approve MCP hosts and runner targets directly from the editor warning
 - generates a readable report inside VS Code
 - shows findings and shortcuts in a dedicated Activity Bar view
 
@@ -173,6 +174,7 @@ The first autofix commands currently supported are:
 - merge starter policies for Node, Python, and Terraform repos
 - apply all safe fixes from the current scan in one pass
 - write reviewed MCP hosts and runner targets into the contract
+- approve reviewed MCP hosts and runner targets from the exact MCP finding in the editor
 
 For MCP config files, the current quick fixes cover:
 

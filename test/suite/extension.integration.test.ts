@@ -162,6 +162,83 @@ export async function run(): Promise<void> {
     await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(originalMcp, "utf8"));
   });
 
+  await runStep("MCP quick fixes can approve host and runner target into the contract", async () => {
+    const contractFixture = {
+      protectedPaths: [".github/workflows/**"],
+      requiredVerification: ["npm run lint"],
+      blockedCommands: ["git push --force"],
+      blockedMcpServers: [],
+      allowedMcpHosts: [],
+      allowedMcpRunnerTargets: [],
+      notes: "Fixture contract"
+    };
+    await vscode.workspace.fs.writeFile(
+      contractUri,
+      Buffer.from(`${JSON.stringify(contractFixture, null, 2)}\n`, "utf8")
+    );
+
+    const originalMcp = Buffer.from(await vscode.workspace.fs.readFile(mcpUri)).toString("utf8");
+    const updatedMcp = JSON.stringify({
+      servers: {
+        review: {
+          command: "npx",
+          args: ["review-server@1.0.0"],
+          url: "https://mcp.example.com"
+        }
+      }
+    }, null, 2);
+    await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(updatedMcp, "utf8"));
+
+    const mcpDocument = await vscode.workspace.openTextDocument(mcpUri);
+    await vscode.window.showTextDocument(mcpDocument);
+    await vscode.commands.executeCommand("agentContracts.analyzeWorkspace");
+    await waitForDiagnostics(mcpUri);
+
+    const diagnostics = vscode.languages.getDiagnostics(mcpUri);
+    const actionGroups = await Promise.all(
+      diagnostics.map((diagnostic) =>
+        vscode.commands.executeCommand<(vscode.CodeAction | vscode.Command)[]>(
+          "vscode.executeCodeActionProvider",
+          mcpUri,
+          diagnostic.range
+        )
+      )
+    );
+    const actions = actionGroups.flatMap((group) => group ?? []).filter((item): item is vscode.CodeAction => "edit" in item);
+    const hostAction = actions.find((action) => action.title.includes("Allow MCP host"));
+    assert.ok(hostAction?.edit);
+    await vscode.workspace.applyEdit(hostAction.edit);
+
+    const contractDocument = await vscode.workspace.openTextDocument(contractUri);
+    if (contractDocument.isDirty) {
+      await contractDocument.save();
+    }
+    assert.match(contractDocument.getText(), /"allowedMcpHosts": \[\s*"mcp\.example\.com"/);
+
+    await vscode.commands.executeCommand("agentContracts.analyzeWorkspace");
+    await waitForDiagnostics(mcpUri);
+    const refreshedDiagnostics = vscode.languages.getDiagnostics(mcpUri);
+    const refreshedGroups = await Promise.all(
+      refreshedDiagnostics.map((diagnostic) =>
+        vscode.commands.executeCommand<(vscode.CodeAction | vscode.Command)[]>(
+          "vscode.executeCodeActionProvider",
+          mcpUri,
+          diagnostic.range
+        )
+      )
+    );
+    const refreshedActions = refreshedGroups.flatMap((group) => group ?? []).filter((item): item is vscode.CodeAction => "edit" in item);
+    const runnerAction = refreshedActions.find((action) => action.title.includes("Allow runner target"));
+    assert.ok(runnerAction?.edit);
+    await vscode.workspace.applyEdit(runnerAction.edit);
+    if (contractDocument.isDirty) {
+      await contractDocument.save();
+    }
+    assert.match(contractDocument.getText(), /"allowedMcpRunnerTargets": \[\s*"review-server@1\.0\.0"/);
+
+    await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(originalMcp, "utf8"));
+  });
+
   await runStep("analyzeWorkspace exposes contract quick fixes", async () => {
     const contractFixture = {
       protectedPaths: [".github/workflows/**"],

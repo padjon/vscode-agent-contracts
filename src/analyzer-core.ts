@@ -24,7 +24,8 @@ type McpServerDiff = Omit<ChangedMcpServerDetail, "findingCount" | "highestSever
 export function analyzeMcpConfigDocument(
   relativePath: string,
   raw: string,
-  contract: AgentContract | undefined
+  contract: AgentContract | undefined,
+  contractPath = ".agent-contract.json"
 ): Finding[] {
   const findings: Finding[] = [];
   try {
@@ -118,6 +119,16 @@ export function analyzeMcpConfigDocument(
             location: relativePath,
             jsonPath: commandPath,
             range: nodeRange(root, commandPath),
+            fix: runnerTarget
+              ? {
+                  kind: "append-unique",
+                  path: ["allowedMcpRunnerTargets"],
+                  value: [runnerTarget],
+                  title: `Allow runner target '${runnerTarget}'`,
+                  targetLocation: contractPath,
+                  safe: false
+                }
+              : undefined,
             recommendation: runnerTarget
               ? "Approve the runner target in the contract only after reviewing the exact package or image."
               : "Pin exact versions and document why the runner is allowed in the contract."
@@ -169,6 +180,14 @@ export function analyzeMcpConfigDocument(
           location: relativePath,
           jsonPath: urlPath,
           range: nodeRange(root, urlPath),
+          fix: {
+            kind: "append-unique",
+            path: ["allowedMcpHosts"],
+            value: [remoteHost],
+            title: `Allow MCP host '${remoteHost}'`,
+            targetLocation: contractPath,
+            safe: false
+          },
           recommendation: "Review ownership, authentication, and transport guarantees before allowlisting the remote MCP host."
         });
       }

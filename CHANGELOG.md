@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.0
+
+- Added editor quick fixes that approve MCP hosts and runner targets directly into the contract
+- Kept those approval actions out of batch safe fixes so approval stays explicit
+
 ## 1.5.1
 
 - Added marketplace and sponsor badges to the README header

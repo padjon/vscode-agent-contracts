@@ -79,6 +79,12 @@ test("analyzeMcpConfigDocument flags dangerous shell chains, unpinned runners, a
   assert(ids.some((id) => id.includes("mcp-runner-unpinned")));
   assert(ids.some((id) => id.includes("mcp-remote")));
   assert(ids.some((id) => id.includes("mcp-shell-chain")));
+
+  const remoteFinding = findings.find((finding) => finding.id.includes("mcp-remote"));
+  assert.equal(remoteFinding?.fix?.targetLocation, ".agent-contract.json");
+
+  const runnerFinding = findings.find((finding) => finding.title.includes("uses a package runner"));
+  assert.equal(runnerFinding?.fix?.safe, false);
 });
 
 test("analyzeMcpConfigDocument respects allowlisted MCP hosts and runner targets", () => {

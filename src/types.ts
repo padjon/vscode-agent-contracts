@@ -6,6 +6,8 @@ export interface FindingFix {
   path: JsonPathSegment[];
   value?: unknown;
   title: string;
+  targetLocation?: string;
+  safe?: boolean;
 }
 
 export interface FindingRange {

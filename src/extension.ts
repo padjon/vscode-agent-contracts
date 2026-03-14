@@ -6,6 +6,7 @@ import {
   contractUriForFolder,
   defaultContract,
   detectRecommendedVerification,
+  fileExists,
   readContract,
   writeContract
 } from "./contracts";
@@ -632,7 +633,7 @@ function unique(values: string[]): string[] {
 }
 
 function getFixableFindings(report: AnalysisReport): Finding[] {
-  return report.findings.filter((finding) => finding.fix && finding.location);
+  return report.findings.filter((finding) => finding.fix && finding.location && finding.fix.safe !== false);
 }
 
 function sortFindingsForBatchFix(findings: Finding[]): Finding[] {
@@ -679,7 +680,7 @@ function rangeFromJsonPath(document: vscode.TextDocument, jsonPath: Array<string
 class AgentContractsCodeActionProvider implements vscode.CodeActionProvider {
   constructor(private readonly provider: FindingsProvider) {}
 
-  provideCodeActions(document: vscode.TextDocument, range: vscode.Range): vscode.CodeAction[] {
+  async provideCodeActions(document: vscode.TextDocument, range: vscode.Range): Promise<vscode.CodeAction[]> {
     const report = this.provider.getLatestReport();
     const folder = vscode.workspace.workspaceFolders?.[0];
     if (!report || !folder) {
@@ -687,28 +688,54 @@ class AgentContractsCodeActionProvider implements vscode.CodeActionProvider {
     }
 
     const relativePath = path.relative(folder.uri.fsPath, document.uri.fsPath).split(path.sep).join("/");
-    return report.findings
-      .filter((finding) => finding.location === relativePath && finding.fix)
-      .filter((finding) => range.intersection(rangeFromFinding(document, finding)) !== undefined)
-      .map((finding) => createQuickFix(document, finding))
-      .filter((action): action is vscode.CodeAction => action !== undefined);
+    const actions = await Promise.all(
+      report.findings
+        .filter((finding) => finding.location === relativePath && finding.fix)
+        .filter((finding) => range.intersection(rangeFromFinding(document, finding)) !== undefined)
+        .map((finding) => createQuickFix(document, finding, report, folder))
+    );
+    return actions.filter((action): action is vscode.CodeAction => action !== undefined);
   }
 }
 
-function createQuickFix(document: vscode.TextDocument, finding: Finding): vscode.CodeAction | undefined {
+async function createQuickFix(
+  document: vscode.TextDocument,
+  finding: Finding,
+  report: AnalysisReport,
+  folder: vscode.WorkspaceFolder
+): Promise<vscode.CodeAction | undefined> {
   if (!finding.fix) {
     return undefined;
   }
 
   try {
-    const updated = applyFindingFix(document.getText(), finding);
+    const targetUri = finding.fix.targetLocation
+      ? vscode.Uri.joinPath(folder.uri, ...finding.fix.targetLocation.split("/"))
+      : document.uri;
+    const targetText = await readFixTargetText(targetUri, report);
+    const updated = applyFindingFix(targetText, finding);
     const action = new vscode.CodeAction(finding.fix.title, vscode.CodeActionKind.QuickFix);
     action.edit = new vscode.WorkspaceEdit();
-    const fullRange = new vscode.Range(
-      document.positionAt(0),
-      document.positionAt(document.getText().length)
-    );
-    action.edit.replace(document.uri, fullRange, updated);
+    if (targetUri.toString() === document.uri.toString()) {
+      const fullRange = new vscode.Range(
+        document.positionAt(0),
+        document.positionAt(document.getText().length)
+      );
+      action.edit.replace(document.uri, fullRange, updated);
+    } else {
+      const exists = await fileExists(targetUri);
+      if (!exists) {
+        action.edit.createFile(targetUri, { ignoreIfExists: true });
+        action.edit.insert(targetUri, new vscode.Position(0, 0), updated);
+      } else {
+        const targetDocument = await vscode.workspace.openTextDocument(targetUri);
+        const fullRange = new vscode.Range(
+          targetDocument.positionAt(0),
+          targetDocument.positionAt(targetDocument.getText().length)
+        );
+        action.edit.replace(targetUri, fullRange, updated);
+      }
+    }
     action.diagnostics = [
       new vscode.Diagnostic(
         rangeFromFinding(document, finding),
@@ -719,6 +746,16 @@ function createQuickFix(document: vscode.TextDocument, finding: Finding): vscode
     return action;
   } catch {
     return undefined;
+  }
+}
+
+async function readFixTargetText(targetUri: vscode.Uri, report: AnalysisReport): Promise<string> {
+  try {
+    const document = await vscode.workspace.openTextDocument(targetUri);
+    return document.getText();
+  } catch {
+    const recommendedVerification = report.recommendedVerification;
+    return `${JSON.stringify(defaultContract(recommendedVerification), null, 2)}\n`;
   }
 }
 
