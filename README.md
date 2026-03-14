@@ -10,7 +10,7 @@ It keeps a small policy file in the repo and uses it to answer practical questio
 - which checks should run before changes are trusted
 - which MCP setups look risky or need review
 
-![Agent Contracts overview](resources/overview.png)
+![Agent Contracts overview](https://raw.githubusercontent.com/padjon/vscode-agent-contracts/main/resources/overview.png)
 
 ## What it does
 
@@ -163,7 +163,7 @@ The extension now includes:
 - extension-host integration tests running against a real VS Code instance
 - a GitHub Actions workflow that runs `npm test` on pushes and pull requests
 
-![Quality gates](resources/quality.png)
+![Quality gates](https://raw.githubusercontent.com/padjon/vscode-agent-contracts/main/resources/quality.png)
 
 The trust score is only a prioritization signal. The detailed findings matter more than the number.
 

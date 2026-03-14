@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.12
+
+- Switched README images to absolute GitHub raw URLs for more reliable marketplace rendering
+
 ## 0.0.11
 
 - Moved the canonical repository to `padjon/vscode-agent-contracts`
