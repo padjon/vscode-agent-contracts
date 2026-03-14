@@ -2,7 +2,7 @@
   "name": "agent-contracts",
   "displayName": "Agent Contracts",
   "description": "Workspace trust contracts for MCP and AI-assisted development in VS Code.",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "publisher": "padjon",
   "icon": "resources/icon.png",
   "sponsor": {
@@ -24,6 +24,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/padjon/vscode-agent-contracts.git"
+  },
+  "homepage": "https://github.com/padjon/vscode-agent-contracts#readme",
+  "bugs": {
+    "url": "https://github.com/padjon/vscode-agent-contracts/issues"
   },
   "engines": {
     "vscode": "^1.109.0"

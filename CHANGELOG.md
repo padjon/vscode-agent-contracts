@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.1
+
+- Added homepage and issue tracker metadata for a cleaner stable support surface on GitHub and the marketplace
+
 ## 1.7.0
 
 - Added contract-driven `severityOverrides` so repositories can raise or lower matching finding classes
