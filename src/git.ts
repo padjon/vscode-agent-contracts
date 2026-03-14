@@ -88,6 +88,21 @@ export async function getChangedFiles(folder: vscode.WorkspaceFolder): Promise<s
   return details.map((detail) => detail.path);
 }
 
+export async function readFileAtHead(
+  folder: vscode.WorkspaceFolder,
+  relativePath: string
+): Promise<string | undefined> {
+  try {
+    return await execFileAsync(
+      "git",
+      ["show", `HEAD:${relativePath}`],
+      folder.uri.fsPath
+    );
+  } catch {
+    return undefined;
+  }
+}
+
 function normalizeStatus(value: string): RawChangedFileDetail["status"] | undefined {
   if (value.startsWith("A")) {
     return "added";

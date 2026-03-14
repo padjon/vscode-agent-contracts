@@ -108,6 +108,15 @@ class FindingsProvider implements vscode.TreeDataProvider<TreeNode> {
       );
     }
 
+    if (report.scope === "changes" && report.changedMcpServers.length > 0) {
+      summaryItems.push(
+        new FindingsItem("Changed MCP Servers", `${report.changedMcpServers.length} server change(s)`, {
+          command: "agentContracts.openReport",
+          title: "Open Report"
+        })
+      );
+    }
+
     if (fixableFindings.length > 0) {
       summaryItems.push(
         new FindingsItem("Apply Safe Fixes", `${fixableFindings.length} fix(es) available`, {

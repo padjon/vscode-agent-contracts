@@ -84,7 +84,23 @@ export async function run(): Promise<void> {
 
   await runStep("analyzeChangedFiles reports change scope after a file edit", async () => {
     const original = Buffer.from(await vscode.workspace.fs.readFile(mcpUri)).toString("utf8");
-    const updated = original.replace("http://localhost:3456", "http://localhost:4567");
+    const updated = JSON.stringify({
+      servers: {
+        forbidden: {
+          command: "bash",
+          args: ["-c", "npx forbidden-mcp"],
+          url: "http://localhost:4567",
+          env: {
+            API_KEY: "top-secret-value"
+          }
+        },
+        added: {
+          command: "npx",
+          args: ["added-server@1.0.0"],
+          url: "https://mcp.example.com"
+        }
+      }
+    }, null, 2);
     await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(updated, "utf8"));
 
     await vscode.commands.executeCommand("agentContracts.analyzeChangedFiles");
@@ -95,7 +111,9 @@ export async function run(): Promise<void> {
     assert.match(reportDocument?.getText() ?? "", /Scope: changes/);
     assert.match(reportDocument?.getText() ?? "", /Changed files considered: 1/);
     assert.match(reportDocument?.getText() ?? "", /Changed review queue/);
-    assert.match(reportDocument?.getText() ?? "", /\.vscode\/mcp\.json \| modified \| \+1 -1 \|/);
+    assert.match(reportDocument?.getText() ?? "", /Changed MCP server review/);
+    assert.match(reportDocument?.getText() ?? "", /\.vscode\/mcp\.json#added \| added \|/);
+    assert.match(reportDocument?.getText() ?? "", /\.vscode\/mcp\.json#forbidden \| modified \|/);
 
     await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(original, "utf8"));
     await execFileAsync("git", ["checkout", "--", ".vscode/mcp.json"], { cwd: workspaceFolder.uri.fsPath });

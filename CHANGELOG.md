@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0
+
+- Added server-level MCP diff review for changed-file scans
+- Added report and sidebar summaries for exact MCP server entries added, modified, or removed
+
 ## 1.3.0
 
 - Added contract-aware MCP approvals for reviewed remote hosts and runner targets

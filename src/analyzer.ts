@@ -11,9 +11,11 @@ import {
   calculateTrustScore,
   collectMcpPolicySignalsDocument,
   collectSensitiveCoverageFindings,
+  diffMcpServersDocument,
   collectVerificationFindings
 } from "./analyzer-core";
-import { AgentContract, AnalysisReport, ChangedFileDetail, Finding, Severity } from "./types";
+import { readFileAtHead } from "./git";
+import { AgentContract, AnalysisReport, ChangedFileDetail, ChangedMcpServerDetail, Finding, Severity } from "./types";
 
 const textDecoder = new TextDecoder();
 
@@ -54,6 +56,7 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
       sensitiveFiles: [],
       changedFiles,
       changedFileDetails: [],
+      changedMcpServers: [],
       observedMcpHosts: [],
       observedMcpRunnerTargets: [],
       recommendedVerification: [],
@@ -93,6 +96,7 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
     : allMcpConfigs;
   const observedMcpHosts = new Set<string>();
   const observedMcpRunnerTargets = new Set<string>();
+  const changedMcpServers: ChangedMcpServerDetail[] = [];
   if (mcpConfigs.length === 0) {
     findings.push({
       id: "missing-mcp-config",
@@ -117,6 +121,15 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
     for (const target of runnerTargets) {
       observedMcpRunnerTargets.add(target);
     }
+
+    if (scope === "changes") {
+      const relativePath = toRelative(folder, uri);
+      const previousRaw = await readFileAtHead(folder, relativePath);
+      changedMcpServers.push(...buildChangedMcpServerDetails(
+        diffMcpServersDocument(relativePath, textDecoder.decode(await vscode.workspace.fs.readFile(uri)), previousRaw),
+        findings
+      ));
+    }
   }
 
   if (contract && contract.blockedCommands.length === 0) {
@@ -133,13 +146,15 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
 
   const trustScore = calculateTrustScore(findings);
   const enrichedChangedFileDetails = buildChangedFileDetails(changedFileDetails, findings);
+  const enrichedChangedMcpServers = sortChangedMcpServers(changedMcpServers);
   const summary = buildSummary(
     findings,
     trustScore,
     contract !== undefined,
     mcpConfigs.length,
     scope,
-    enrichedChangedFileDetails
+    enrichedChangedFileDetails,
+    enrichedChangedMcpServers
   );
 
   return {
@@ -154,6 +169,7 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
     sensitiveFiles,
     changedFiles,
     changedFileDetails: enrichedChangedFileDetails,
+    changedMcpServers: enrichedChangedMcpServers,
     observedMcpHosts: [...observedMcpHosts].sort((left, right) => left.localeCompare(right)),
     observedMcpRunnerTargets: [...observedMcpRunnerTargets].sort((left, right) => left.localeCompare(right)),
     recommendedVerification,
@@ -245,7 +261,8 @@ function buildSummary(
   hasContract: boolean,
   mcpConfigCount: number,
   scope: "workspace" | "changes",
-  changedFileDetails: ChangedFileDetail[]
+  changedFileDetails: ChangedFileDetail[],
+  changedMcpServers: ChangedMcpServerDetail[]
 ): string {
   const critical = findings.filter((finding) => finding.severity === "critical").length;
   const high = findings.filter((finding) => finding.severity === "high").length;
@@ -253,7 +270,7 @@ function buildSummary(
   const contractState = hasContract ? "Contract present." : "Contract missing.";
   const mcpState = mcpConfigCount > 0 ? `${mcpConfigCount} MCP config file(s) analyzed.` : "No MCP configs analyzed.";
   const changedState = scope === "changes"
-    ? buildChangedScopeSummary(changedFileDetails)
+    ? buildChangedScopeSummary(changedFileDetails, changedMcpServers)
     : "";
   return `Trust score ${trustScore}/100. ${critical} critical and ${high} high severity finding(s). ${contractState} ${mcpState}${changedState}`;
 }
@@ -317,7 +334,10 @@ function buildChangedFileDetails(
     });
 }
 
-function buildChangedScopeSummary(changedFileDetails: ChangedFileDetail[]): string {
+function buildChangedScopeSummary(
+  changedFileDetails: ChangedFileDetail[],
+  changedMcpServers: ChangedMcpServerDetail[]
+): string {
   if (changedFileDetails.length === 0) {
     return " No changed files detected.";
   }
@@ -331,7 +351,7 @@ function buildChangedScopeSummary(changedFileDetails: ChangedFileDetail[]): stri
   const topLabel = topFile.findingCount > 0
     ? `${topFile.path} has ${topFile.findingCount} finding(s)`
     : `${topFile.path} was touched`;
-  return ` ${riskyFiles} of ${changedFileDetails.length} changed file(s) have findings. Highest-priority review: ${topLabel}.`;
+  return ` ${riskyFiles} of ${changedFileDetails.length} changed file(s) have findings. Highest-priority review: ${topLabel}.${buildChangedMcpServerSummary(changedMcpServers)}`;
 }
 
 function uniqueChangedFileDetails(
@@ -363,4 +383,57 @@ function severityRank(severity: Severity | undefined): number {
     default:
       return 4;
   }
+}
+
+function buildChangedMcpServerDetails(
+  details: Array<Omit<ChangedMcpServerDetail, "findingCount" | "highestSeverity">>,
+  findings: Finding[]
+): ChangedMcpServerDetail[] {
+  return details.map((detail) => {
+    const relatedFindings = findings.filter((finding) =>
+      finding.location === detail.path &&
+      Array.isArray(finding.jsonPath) &&
+      finding.jsonPath[0] === "servers" &&
+      finding.jsonPath[1] === detail.serverName
+    );
+    const highestSeverity = relatedFindings
+      .map((finding) => finding.severity)
+      .sort((left, right) => severityRank(left) - severityRank(right))[0];
+
+    return {
+      ...detail,
+      findingCount: relatedFindings.length,
+      highestSeverity
+    };
+  });
+}
+
+function sortChangedMcpServers(details: ChangedMcpServerDetail[]): ChangedMcpServerDetail[] {
+  return [...details].sort((left, right) => {
+    const severityDelta = severityRank(left.highestSeverity) - severityRank(right.highestSeverity);
+    if (severityDelta !== 0) {
+      return severityDelta;
+    }
+
+    const findingDelta = right.findingCount - left.findingCount;
+    if (findingDelta !== 0) {
+      return findingDelta;
+    }
+
+    return left.serverName.localeCompare(right.serverName);
+  });
+}
+
+function buildChangedMcpServerSummary(details: ChangedMcpServerDetail[] | undefined): string {
+  if (!details || details.length === 0) {
+    return "";
+  }
+
+  const top = details[0];
+  if (!top) {
+    return "";
+  }
+
+  const label = `${top.path}#${top.serverName} (${top.status})`;
+  return ` Highest-priority MCP server change: ${label}.`;
 }

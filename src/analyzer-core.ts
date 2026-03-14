@@ -1,7 +1,7 @@
 import { findNodeAtLocation, parse, parseTree } from "jsonc-parser";
 import minimatch = require("minimatch");
 
-import { AgentContract, Finding, JsonPathSegment, Severity } from "./types";
+import { AgentContract, ChangedMcpServerDetail, Finding, JsonPathSegment, Severity } from "./types";
 
 type McpConfig = {
   servers?: Record<string, Record<string, unknown>>;
@@ -18,6 +18,8 @@ export interface McpPolicySignals {
   remoteHosts: string[];
   runnerTargets: string[];
 }
+
+type McpServerDiff = Omit<ChangedMcpServerDetail, "findingCount" | "highestSeverity">;
 
 export function analyzeMcpConfigDocument(
   relativePath: string,
@@ -246,6 +248,42 @@ export function collectMcpPolicySignalsDocument(raw: string): McpPolicySignals {
       runnerTargets: []
     };
   }
+}
+
+export function diffMcpServersDocument(
+  relativePath: string,
+  currentRaw: string,
+  previousRaw: string | undefined
+): McpServerDiff[] {
+  const currentServers = parseServers(currentRaw);
+  const previousServers = previousRaw ? parseServers(previousRaw) : new Map<string, string>();
+  const names = new Set<string>([...currentServers.keys(), ...previousServers.keys()]);
+  const details: McpServerDiff[] = [];
+
+  for (const serverName of names) {
+    const current = currentServers.get(serverName);
+    const previous = previousServers.get(serverName);
+    if (current === previous) {
+      continue;
+    }
+
+    const status: McpServerDiff["status"] = current === undefined
+      ? "removed"
+      : previous === undefined
+        ? "added"
+        : "modified";
+
+    details.push({
+      path: relativePath,
+      serverName,
+      status
+    });
+  }
+
+  return details.sort((left, right) => {
+    const statusRank = changedServerStatusRank(left.status) - changedServerStatusRank(right.status);
+    return statusRank !== 0 ? statusRank : left.serverName.localeCompare(right.serverName);
+  });
 }
 
 export function collectVerificationFindings(
@@ -494,6 +532,29 @@ function matchesAllowPattern(value: string | undefined, patterns: string[] | und
   }
 
   return patterns.some((pattern) => minimatch(value, pattern, { nocase: true }));
+}
+
+function parseServers(raw: string): Map<string, string> {
+  try {
+    const parsed = parse(raw) as McpConfig;
+    const servers = parsed?.servers ?? {};
+    return new Map(
+      Object.entries(servers).map(([name, config]) => [name, JSON.stringify(config)])
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+function changedServerStatusRank(status: ChangedMcpServerDetail["status"]): number {
+  switch (status) {
+    case "added":
+      return 0;
+    case "modified":
+      return 1;
+    case "removed":
+      return 2;
+  }
 }
 
 function isLocalHost(hostname: string): boolean {

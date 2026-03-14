@@ -15,6 +15,7 @@ It keeps a small policy file in the repo and uses it to answer practical questio
 - creates a repo-local `.agent-contract.json`
 - analyzes MCP config files in the workspace
 - prioritizes changed files when you want a branch-focused review
+- highlights exactly which MCP server entries changed in a branch scan
 - checks whether sensitive files are covered by protected path rules
 - compares your contract with the verification scripts your repo already exposes
 - can add missing verification commands to the contract
@@ -89,9 +90,10 @@ If you want a faster setup, run `Agent Contracts: Apply Contract Preset` and sta
 1. Create or open `.agent-contract.json`.
 2. Run a workspace scan to establish a baseline.
 3. Use changed-file scans while reviewing a branch and start with the review queue at the top of the report.
-4. Fix MCP issues directly from diagnostics when a safe quick fix is available.
-5. Apply safe fixes from the sidebar when the scan offers a batch cleanup.
-6. Keep the contract in version control so the repo explains its own trust boundaries.
+4. Use the MCP server change queue to see which exact server blocks were added or modified.
+5. Fix MCP issues directly from diagnostics when a safe quick fix is available.
+6. Apply safe fixes from the sidebar when the scan offers a batch cleanup.
+7. Keep the contract in version control so the repo explains its own trust boundaries.
 
 ## Example contract
 
@@ -153,6 +155,7 @@ The Activity Bar view shows:
 - shortcuts for common contract updates
 - top findings from the latest scan
 - a changed review queue during branch-focused scans
+- a changed MCP server queue for branch-focused MCP edits
 
 ## Diagnostics and autofixes
 

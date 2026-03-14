@@ -6,6 +6,7 @@ import {
   calculateTrustScore,
   collectMcpPolicySignalsDocument,
   collectSensitiveCoverageFindings,
+  diffMcpServersDocument,
   collectVerificationFindings
 } from "../src/analyzer-core";
 import { AgentContract, Finding } from "../src/types";
@@ -119,6 +120,40 @@ test("collectMcpPolicySignalsDocument returns observed remote hosts and runner t
 
   assert.deepEqual(signals.remoteHosts, ["mcp.example.com"]);
   assert.deepEqual(signals.runnerTargets, ["@modelcontextprotocol/server-github@1.0.0"]);
+});
+
+test("diffMcpServersDocument reports added modified and removed servers", () => {
+  const previous = JSON.stringify({
+    servers: {
+      keep: {
+        command: "npx",
+        args: ["keep@1.0.0"]
+      },
+      remove: {
+        command: "npx",
+        args: ["remove@1.0.0"]
+      }
+    }
+  });
+  const current = JSON.stringify({
+    servers: {
+      keep: {
+        command: "npx",
+        args: ["keep@2.0.0"]
+      },
+      add: {
+        command: "npx",
+        args: ["add@1.0.0"]
+      }
+    }
+  });
+
+  const details = diffMcpServersDocument(".vscode/mcp.json", current, previous);
+  assert.deepEqual(details, [
+    { path: ".vscode/mcp.json", serverName: "add", status: "added" },
+    { path: ".vscode/mcp.json", serverName: "keep", status: "modified" },
+    { path: ".vscode/mcp.json", serverName: "remove", status: "removed" }
+  ]);
 });
 
 test("collectVerificationFindings flags missing recommended verification", () => {

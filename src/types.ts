@@ -33,6 +33,14 @@ export interface ChangedFileDetail {
   highestSeverity?: Severity;
 }
 
+export interface ChangedMcpServerDetail {
+  path: string;
+  serverName: string;
+  status: "added" | "modified" | "removed";
+  findingCount: number;
+  highestSeverity?: Severity;
+}
+
 export interface Finding {
   id: string;
   severity: Severity;
@@ -58,6 +66,7 @@ export interface AnalysisReport {
   sensitiveFiles: string[];
   changedFiles: string[];
   changedFileDetails: ChangedFileDetail[];
+  changedMcpServers: ChangedMcpServerDetail[];
   observedMcpHosts: string[];
   observedMcpRunnerTargets: string[];
   recommendedVerification: string[];

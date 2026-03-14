@@ -66,6 +66,10 @@ ${formatList(report.changedFiles.slice(0, 50))}
 ## Changed review queue
 
 ${formatChangedFileDetails(report.changedFileDetails)}
+
+## Changed MCP server review
+
+${formatChangedMcpServers(report.changedMcpServers)}
 `;
 }
 
@@ -94,6 +98,20 @@ function formatChangedFileDetails(details: ChangedFileDetail[]): string {
       const renameInfo = detail.previousPath ? ` from ${detail.previousPath}` : "";
       const findings = detail.findingCount > 0 ? `${detail.findingCount} finding(s)` : "no findings";
       return `- ${severity}${detail.path} | ${detail.status}${renameInfo} | +${detail.addedLines} -${detail.removedLines} | ${findings}`;
+    })
+    .join("\n");
+}
+
+function formatChangedMcpServers(details: AnalysisReport["changedMcpServers"]): string {
+  if (details.length === 0) {
+    return "_No MCP server entries changed._";
+  }
+
+  return details
+    .map((detail) => {
+      const severity = detail.highestSeverity ? `[${SEVERITY_EMOJI[detail.highestSeverity]}] ` : "";
+      const findings = detail.findingCount > 0 ? `${detail.findingCount} finding(s)` : "no findings";
+      return `- ${severity}${detail.path}#${detail.serverName} | ${detail.status} | ${findings}`;
     })
     .join("\n");
 }
