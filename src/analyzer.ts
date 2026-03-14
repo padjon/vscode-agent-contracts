@@ -12,18 +12,23 @@ import {
   collectSensitiveCoverageFindings,
   collectVerificationFindings
 } from "./analyzer-core";
-import { AgentContract, AnalysisReport, Finding, Severity } from "./types";
+import { AgentContract, AnalysisReport, ChangedFileDetail, Finding, Severity } from "./types";
 
 const textDecoder = new TextDecoder();
 
 export interface AnalyzeWorkspaceOptions {
   scope?: "workspace" | "changes";
   changedFiles?: string[];
+  changedFileDetails?: Array<Omit<ChangedFileDetail, "findingCount" | "highestSeverity">>;
 }
 
 export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): Promise<AnalysisReport> {
   const scope = options.scope ?? "workspace";
-  const changedFiles = uniqueSorted(options.changedFiles ?? []);
+  const changedFileDetails = uniqueChangedFileDetails(options.changedFileDetails ?? []);
+  const changedFiles = uniqueSorted([
+    ...options.changedFiles ?? [],
+    ...changedFileDetails.map((detail) => detail.path)
+  ]);
   const changedFileSet = new Set(changedFiles);
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
@@ -47,6 +52,7 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
       mcpConfigs: [],
       sensitiveFiles: [],
       changedFiles,
+      changedFileDetails: [],
       recommendedVerification: [],
       summary: "No workspace folder is open."
     };
@@ -115,7 +121,15 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
   }
 
   const trustScore = calculateTrustScore(findings);
-  const summary = buildSummary(findings, trustScore, contract !== undefined, mcpConfigs.length);
+  const enrichedChangedFileDetails = buildChangedFileDetails(changedFileDetails, findings);
+  const summary = buildSummary(
+    findings,
+    trustScore,
+    contract !== undefined,
+    mcpConfigs.length,
+    scope,
+    enrichedChangedFileDetails
+  );
 
   return {
     workspaceName: folder.name,
@@ -128,6 +142,7 @@ export async function analyzeWorkspace(options: AnalyzeWorkspaceOptions = {}): P
     mcpConfigs: mcpConfigs.map((uri) => toRelative(folder, uri)),
     sensitiveFiles,
     changedFiles,
+    changedFileDetails: enrichedChangedFileDetails,
     recommendedVerification,
     summary
   };
@@ -209,14 +224,19 @@ function buildSummary(
   findings: Finding[],
   trustScore: number,
   hasContract: boolean,
-  mcpConfigCount: number
+  mcpConfigCount: number,
+  scope: "workspace" | "changes",
+  changedFileDetails: ChangedFileDetail[]
 ): string {
   const critical = findings.filter((finding) => finding.severity === "critical").length;
   const high = findings.filter((finding) => finding.severity === "high").length;
 
   const contractState = hasContract ? "Contract present." : "Contract missing.";
   const mcpState = mcpConfigCount > 0 ? `${mcpConfigCount} MCP config file(s) analyzed.` : "No MCP configs analyzed.";
-  return `Trust score ${trustScore}/100. ${critical} critical and ${high} high severity finding(s). ${contractState} ${mcpState}`;
+  const changedState = scope === "changes"
+    ? buildChangedScopeSummary(changedFileDetails)
+    : "";
+  return `Trust score ${trustScore}/100. ${critical} critical and ${high} high severity finding(s). ${contractState} ${mcpState}${changedState}`;
 }
 
 function sortFindings(findings: Finding[]): Finding[] {
@@ -243,4 +263,85 @@ function normalizePath(value: string): string {
 
 function uniqueSorted(values: string[]): string[] {
   return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+
+function buildChangedFileDetails(
+  changedFiles: Array<Omit<ChangedFileDetail, "findingCount" | "highestSeverity">>,
+  findings: Finding[]
+): ChangedFileDetail[] {
+  return [...changedFiles]
+    .map((detail) => {
+      const relatedFindings = findings.filter((finding) => finding.location === detail.path);
+      const highestSeverity = relatedFindings
+        .map((finding) => finding.severity)
+        .sort((left, right) => severityRank(left) - severityRank(right))[0];
+
+      return {
+        ...detail,
+        findingCount: relatedFindings.length,
+        highestSeverity
+      };
+    })
+    .sort((left, right) => {
+      const severityDelta = severityRank(left.highestSeverity) - severityRank(right.highestSeverity);
+      if (severityDelta !== 0) {
+        return severityDelta;
+      }
+
+      const findingDelta = right.findingCount - left.findingCount;
+      if (findingDelta !== 0) {
+        return findingDelta;
+      }
+
+      const churnDelta = (right.addedLines + right.removedLines) - (left.addedLines + left.removedLines);
+      return churnDelta !== 0 ? churnDelta : left.path.localeCompare(right.path);
+    });
+}
+
+function buildChangedScopeSummary(changedFileDetails: ChangedFileDetail[]): string {
+  if (changedFileDetails.length === 0) {
+    return " No changed files detected.";
+  }
+
+  const riskyFiles = changedFileDetails.filter((detail) => detail.findingCount > 0).length;
+  const topFile = changedFileDetails[0];
+  if (!topFile) {
+    return "";
+  }
+
+  const topLabel = topFile.findingCount > 0
+    ? `${topFile.path} has ${topFile.findingCount} finding(s)`
+    : `${topFile.path} was touched`;
+  return ` ${riskyFiles} of ${changedFileDetails.length} changed file(s) have findings. Highest-priority review: ${topLabel}.`;
+}
+
+function uniqueChangedFileDetails(
+  details: Array<Omit<ChangedFileDetail, "findingCount" | "highestSeverity">>
+): Array<Omit<ChangedFileDetail, "findingCount" | "highestSeverity">> {
+  const seen = new Set<string>();
+  return details
+    .filter((detail) => {
+      if (seen.has(detail.path)) {
+        return false;
+      }
+
+      seen.add(detail.path);
+      return true;
+    })
+    .sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function severityRank(severity: Severity | undefined): number {
+  switch (severity) {
+    case "critical":
+      return 0;
+    case "high":
+      return 1;
+    case "medium":
+      return 2;
+    case "low":
+      return 3;
+    default:
+      return 4;
+  }
 }

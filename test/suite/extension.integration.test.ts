@@ -63,6 +63,8 @@ export async function run(): Promise<void> {
     assert.ok(reportDocument);
     assert.match(reportDocument?.getText() ?? "", /Scope: changes/);
     assert.match(reportDocument?.getText() ?? "", /Changed files considered: 1/);
+    assert.match(reportDocument?.getText() ?? "", /Changed review queue/);
+    assert.match(reportDocument?.getText() ?? "", /\.vscode\/mcp\.json \| modified \| \+1 -1 \|/);
 
     await vscode.workspace.fs.writeFile(mcpUri, Buffer.from(original, "utf8"));
     await execFileAsync("git", ["checkout", "--", ".vscode/mcp.json"], { cwd: workspaceFolder.uri.fsPath });

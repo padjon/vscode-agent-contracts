@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0
+
+- Added a changed-file review queue with diff size, file status, and finding counts
+- Refocused the README on marketplace users instead of repository maintenance details
+
 ## 1.0.0
 
 - Added starter contract presets for Node, Python, and Terraform repositories

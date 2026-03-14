@@ -10,7 +10,7 @@ import {
   writeContract
 } from "./contracts";
 import { analyzeWorkspace } from "./analyzer";
-import { getChangedFiles } from "./git";
+import { getChangedFileDetails } from "./git";
 import { buildGuideMarkdown } from "./guide";
 import { CONTRACT_PRESETS } from "./presets";
 import { buildMarkdownReport } from "./report";
@@ -50,8 +50,8 @@ class FindingsProvider implements vscode.TreeDataProvider<TreeNode> {
 
   async refresh(showNotification = false, scope: "workspace" | "changes" = "workspace"): Promise<void> {
     const folder = vscode.workspace.workspaceFolders?.[0];
-    const changedFiles = scope === "changes" && folder ? await getChangedFiles(folder).catch(() => []) : [];
-    this.latestReport = await analyzeWorkspace({ scope, changedFiles });
+    const changedFileDetails = scope === "changes" && folder ? await getChangedFileDetails(folder).catch(() => []) : [];
+    this.latestReport = await analyzeWorkspace({ scope, changedFileDetails });
     this.onDidChangeTreeDataEmitter.fire(undefined);
 
     if (showNotification) {
@@ -96,6 +96,16 @@ class FindingsProvider implements vscode.TreeDataProvider<TreeNode> {
         title: "Analyze Changed Files"
       })
     ];
+
+    if (report.scope === "changes" && report.changedFileDetails.length > 0) {
+      const riskyFiles = report.changedFileDetails.filter((detail) => detail.findingCount > 0).length;
+      summaryItems.push(
+        new FindingsItem("Changed Review Queue", `${riskyFiles} risky file(s)`, {
+          command: "agentContracts.openReport",
+          title: "Open Report"
+        })
+      );
+    }
 
     if (!report.contractExists) {
       summaryItems.push(

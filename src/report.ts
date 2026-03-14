@@ -1,4 +1,4 @@
-import { AnalysisReport, Finding, Severity } from "./types";
+import { AnalysisReport, ChangedFileDetail, Finding, Severity } from "./types";
 
 const SEVERITY_EMOJI: Record<Severity, string> = {
   critical: "CRITICAL",
@@ -54,6 +54,10 @@ ${formatList(report.sensitiveFiles.slice(0, 20))}
 ## Changed files
 
 ${formatList(report.changedFiles.slice(0, 50))}
+
+## Changed review queue
+
+${formatChangedFileDetails(report.changedFileDetails)}
 `;
 }
 
@@ -69,4 +73,19 @@ function formatList(items: string[]): string {
   }
 
   return items.map((item) => `- ${item}`).join("\n");
+}
+
+function formatChangedFileDetails(details: ChangedFileDetail[]): string {
+  if (details.length === 0) {
+    return "_No changed files detected._";
+  }
+
+  return details
+    .map((detail) => {
+      const severity = detail.highestSeverity ? `[${SEVERITY_EMOJI[detail.highestSeverity]}] ` : "";
+      const renameInfo = detail.previousPath ? ` from ${detail.previousPath}` : "";
+      const findings = detail.findingCount > 0 ? `${detail.findingCount} finding(s)` : "no findings";
+      return `- ${severity}${detail.path} | ${detail.status}${renameInfo} | +${detail.addedLines} -${detail.removedLines} | ${findings}`;
+    })
+    .join("\n");
 }

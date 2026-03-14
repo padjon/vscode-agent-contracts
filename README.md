@@ -2,8 +2,6 @@
 
 `Agent Contracts` is a VS Code extension for repositories that use AI coding tools, MCP servers, and automation but still want explicit review boundaries.
 
-[![CI](https://github.com/padjon/vscode-agent-contracts/actions/workflows/ci.yml/badge.svg)](https://github.com/padjon/vscode-agent-contracts/actions/workflows/ci.yml)
-
 It keeps a small policy file in the repo and uses it to answer practical questions:
 
 - which files should be treated as sensitive
@@ -16,7 +14,7 @@ It keeps a small policy file in the repo and uses it to answer practical questio
 
 - creates a repo-local `.agent-contract.json`
 - analyzes MCP config files in the workspace
-- analyzes only changed files when you want a branch-focused review
+- prioritizes changed files when you want a branch-focused review
 - checks whether sensitive files are covered by protected path rules
 - compares your contract with the verification scripts your repo already exposes
 - can add missing verification commands to the contract
@@ -84,7 +82,7 @@ If you want a faster setup, run `Agent Contracts: Apply Contract Preset` and sta
 
 1. Create or open `.agent-contract.json`.
 2. Run a workspace scan to establish a baseline.
-3. Use changed-file scans while reviewing a branch.
+3. Use changed-file scans while reviewing a branch and start with the review queue at the top of the report.
 4. Fix MCP issues directly from diagnostics when a safe quick fix is available.
 5. Keep the contract in version control so the repo explains its own trust boundaries.
 
@@ -111,12 +109,6 @@ The extension stores its policy in `.agent-contract.json`.
   "blockedMcpServers": []
 }
 ```
-
-Starter templates are also included in the repository:
-
-- [examples/node.agent-contract.json](/home/psadmin/dev/vscode-extension-unnamed/examples/node.agent-contract.json)
-- [examples/python.agent-contract.json](/home/psadmin/dev/vscode-extension-unnamed/examples/python.agent-contract.json)
-- [examples/terraform.agent-contract.json](/home/psadmin/dev/vscode-extension-unnamed/examples/terraform.agent-contract.json)
 
 ## Example findings
 
@@ -148,6 +140,7 @@ The Activity Bar view shows:
 - a shortcut to the report
 - shortcuts for common contract updates
 - top findings from the latest scan
+- a changed review queue during branch-focused scans
 
 ## Diagnostics and autofixes
 
@@ -164,16 +157,6 @@ For MCP config files, the current quick fixes cover:
 - switching `http://` MCP URLs to `https://`
 - removing MCP servers blocked by the contract
 - replacing inline secret values with `${ENV_VAR}` style references
-
-## Quality
-
-The extension now includes:
-
-- unit tests for analyzer heuristics
-- extension-host integration tests running against a real VS Code instance
-- a GitHub Actions workflow that runs `npm test` on pushes and pull requests
-
-![Quality gates](https://raw.githubusercontent.com/padjon/vscode-agent-contracts/main/resources/quality.png)
 
 The trust score is only a prioritization signal. The detailed findings matter more than the number.
 

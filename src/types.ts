@@ -21,6 +21,16 @@ export interface AgentContract {
   notes?: string;
 }
 
+export interface ChangedFileDetail {
+  path: string;
+  previousPath?: string;
+  status: "added" | "modified" | "renamed" | "copied";
+  addedLines: number;
+  removedLines: number;
+  findingCount: number;
+  highestSeverity?: Severity;
+}
+
 export interface Finding {
   id: string;
   severity: Severity;
@@ -45,6 +55,7 @@ export interface AnalysisReport {
   mcpConfigs: string[];
   sensitiveFiles: string[];
   changedFiles: string[];
+  changedFileDetails: ChangedFileDetail[];
   recommendedVerification: string[];
   summary: string;
 }
